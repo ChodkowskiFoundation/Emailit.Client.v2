@@ -1,4 +1,4 @@
-# Emailit.Client
+# Emailit.Client v2
 
 A comprehensive .NET client library for the [Emailit API v2](https://emailit.com/docs/api-reference). Built on top of [Flurl HTTP](https://flurl.dev/docs/fluent-http/), it supports all API endpoints including emails, domains, audiences, subscribers, templates, suppressions, and email verification.
 
