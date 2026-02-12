@@ -12,8 +12,8 @@
     <!-- NuGet Package Properties -->
     <PackageId>Emailit.Client</PackageId>
     <Version>1.0.0</Version>
-    <Authors>MassMailer</Authors>
-    <Company>MassMailer</Company>
+    <Authors>Konstanty Chodkowski</Authors>
+    <Company>Konstanty Chodkowski Foundation</Company>
     <Copyright>Copyright (c) 2025 MassMailer</Copyright>
     <Description>A comprehensive .NET client library for the Emailit API v2. Supports all API endpoints including emails, domains, audiences, subscribers, templates, suppressions, and email verification.</Description>
     <PackageTags>emailit;email;api;client;smtp;transactional</PackageTags>

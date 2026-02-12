@@ -30,13 +30,11 @@ public static class ServiceCollectionExtensions
         services.Configure<EmailitClientOptions>(
             configuration.GetSection(EmailitClientOptions.SectionName));
 
-        services.AddSingleton<IEmailitClient>(sp =>
+        return services.AddSingleton<IEmailitClient>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<EmailitClientOptions>>();
             return new EmailitClient(options);
         });
-
-        return services;
     }
 
     /// <summary>
@@ -55,13 +53,11 @@ public static class ServiceCollectionExtensions
     {
         services.Configure(configure);
 
-        services.AddSingleton<IEmailitClient>(sp =>
+        return services.AddSingleton<IEmailitClient>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<EmailitClientOptions>>();
             return new EmailitClient(options);
         });
-
-        return services;
     }
 
     /// <summary>
@@ -72,10 +68,7 @@ public static class ServiceCollectionExtensions
     /// </example>
     public static IServiceCollection AddEmailitClient(
         this IServiceCollection services,
-        string apiKey)
-    {
-        return services.AddEmailitClient(options => options.ApiKey = apiKey);
-    }
+        string apiKey) => services.AddEmailitClient(options => options.ApiKey = apiKey);
 
     /// <summary>
     /// Registers Emailit client using both appsettings and a configuration action.
@@ -97,13 +90,11 @@ public static class ServiceCollectionExtensions
 
         services.PostConfigure(configure);
 
-        services.AddSingleton<IEmailitClient>(sp =>
+        return services.AddSingleton<IEmailitClient>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<EmailitClientOptions>>();
             return new EmailitClient(options);
         });
-
-        return services;
     }
 
     /// <summary>
@@ -129,13 +120,11 @@ public static class ServiceCollectionExtensions
             services.Configure(configure);
         }
 
-        services.AddSingleton<IEmailitClientFactory>(sp =>
+        return services.AddSingleton<IEmailitClientFactory>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<EmailitClientOptions>>();
             return new EmailitClientFactory(options);
         });
-
-        return services;
     }
 
     /// <summary>
@@ -149,13 +138,11 @@ public static class ServiceCollectionExtensions
         services.Configure<EmailitClientOptions>(
             configuration.GetSection(EmailitClientOptions.SectionName));
 
-        services.AddSingleton<IEmailitClientFactory>(sp =>
+        return services.AddSingleton<IEmailitClientFactory>(sp =>
         {
             var options = sp.GetRequiredService<IOptions<EmailitClientOptions>>();
             return new EmailitClientFactory(options);
         });
-
-        return services;
     }
 
 }

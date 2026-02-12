@@ -20,7 +20,7 @@ public sealed record EmailResponse
     public string Id { get; init; } = null!;
 
     /// <summary>
-    /// Current email status.
+    /// Current email status, one of following values: "pending", "scheduled", "sent", "delivered", "bounced", "canceled".
     /// </summary>
     [JsonPropertyName("status")]
     public string Status { get; init; } = null!;

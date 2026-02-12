@@ -76,14 +76,6 @@ public interface IEmailitClient : IDisposable
     /// <param name="ct">Cancellation token.</param>
     Task<EmailResponse> ResendEmailAsync(string emailId, CancellationToken ct = default);
 
-    /// <summary>
-    /// Retries a failed email (creates a new email with a new ID).
-    /// </summary>
-    /// <param name="emailId">Email ID to retry.</param>
-    /// <param name="ct">Cancellation token.</param>
-    [Obsolete("Use ResendEmailAsync instead. This method will be removed in v2.0.")]
-    Task<EmailResponse> RetryEmailAsync(string emailId, CancellationToken ct = default);
-
     #endregion
 
     #region Domains

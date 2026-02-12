@@ -1,5 +1,5 @@
-using System.Net;
 using System.Text.Json;
+
 using Emailit.Client.Exceptions;
 using Emailit.Client.Models;
 using Emailit.Client.Models.ApiKeys;
@@ -10,8 +10,10 @@ using Emailit.Client.Models.Subscribers;
 using Emailit.Client.Models.Suppressions;
 using Emailit.Client.Models.Templates;
 using Emailit.Client.Models.Verification;
+
 using Flurl;
 using Flurl.Http;
+
 using Microsoft.Extensions.Options;
 
 namespace Emailit.Client;
@@ -22,7 +24,7 @@ namespace Emailit.Client;
 public sealed class EmailitClient : IEmailitClient
 {
     private readonly EmailitClientOptions _options;
-    private readonly IFlurlClient _client;
+    private readonly FlurlClient _client;
     private bool _disposed;
     private volatile RateLimitInfo? _lastRateLimitInfo;
 
@@ -60,7 +62,7 @@ public sealed class EmailitClient : IEmailitClient
 
     #region Emails
 
-    public async Task<EmailResponse> SendEmailAsync(
+    public Task<EmailResponse> SendEmailAsync(
         SendEmailRequest request,
         string? idempotencyKey = null,
         CancellationToken ct = default)
@@ -68,11 +70,9 @@ public sealed class EmailitClient : IEmailitClient
         var flurlRequest = _client.Request("/v2/emails");
 
         if (!string.IsNullOrEmpty(idempotencyKey))
-        {
             flurlRequest.WithHeader("Idempotency-Key", idempotencyKey);
-        }
 
-        return await ExecuteAsync<EmailResponse>(
+        return ExecuteAsync<EmailResponse>(
             () => flurlRequest.PostJsonAsync(request, cancellationToken: ct),
             ct);
     }
@@ -141,11 +141,6 @@ public sealed class EmailitClient : IEmailitClient
         ExecuteAsync<EmailResponse>(
             () => _client.Request("/v2/emails", emailId, "resend").PostAsync(cancellationToken: ct),
             ct);
-
-#pragma warning disable CS0618 // Obsolete member usage is intentional (delegation)
-    public Task<EmailResponse> RetryEmailAsync(string emailId, CancellationToken ct = default) =>
-        ResendEmailAsync(emailId, ct);
-#pragma warning restore CS0618
 
     #endregion
 
@@ -488,6 +483,7 @@ public sealed class EmailitClient : IEmailitClient
             401 => new EmailitAuthenticationException(message),
             403 => new EmailitException(message, 403),
             404 => new EmailitNotFoundException(message),
+            413 => new EmailitMessageTooLargeException(errorResponse?.Details ?? message),
             429 when rateLimitInfo?.IsDailyLimitReached == true => new DailyLimitExceededException(rateLimitInfo),
             429 => new RateLimitExceededException(rateLimitInfo),
             >= 500 => new EmailitException($"Server error: {message}", statusCode),

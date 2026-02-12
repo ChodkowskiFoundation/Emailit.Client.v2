@@ -26,6 +26,12 @@ public sealed record ErrorResponse
     public string? Code { get; init; }
 
     /// <summary>
+    /// Error details.
+    /// </summary>
+    [JsonPropertyName("details")]
+    public string? Details { get; init; }
+
+    /// <summary>
     /// Validation errors by field.
     /// </summary>
     [JsonPropertyName("errors")]
@@ -36,6 +42,6 @@ public sealed record ErrorResponse
     /// </summary>
     public string GetErrorMessage()
     {
-        return Message ?? Error ?? Code ?? "Unknown error";
+        return Message ?? Error ?? Code ?? Details ?? "Unknown error";
     }
 }

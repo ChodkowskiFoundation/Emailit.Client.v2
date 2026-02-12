@@ -7,7 +7,7 @@ namespace Emailit.Client.Tests;
 public sealed class EmailitClientTests : IDisposable
 {
     private readonly HttpTest _httpTest;
-    private readonly IEmailitClient _client;
+    private readonly EmailitClient _client;
 
     public EmailitClientTests()
     {
@@ -370,24 +370,6 @@ public sealed class EmailitClientTests : IDisposable
             .WithVerb(HttpMethod.Post)
             .Times(1);
     }
-
-#pragma warning disable CS0618
-    [Fact]
-    public async Task RetryEmailAsync_DelegatesToResendEmailAsync()
-    {
-        // Arrange
-        _httpTest.RespondWithJson(new { id = "em_456", status = "queued", created_at = DateTime.UtcNow });
-
-        // Act
-        var result = await _client.RetryEmailAsync("em_123");
-
-        // Assert — should call /resend (not /retry)
-        result.Id.Should().Be("em_456");
-        _httpTest.ShouldHaveCalled("https://api.emailit.com/v2/emails/em_123/resend")
-            .WithVerb(HttpMethod.Post)
-            .Times(1);
-    }
-#pragma warning restore CS0618
 
     #endregion
 
