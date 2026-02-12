@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Emailit.Client/Emailit.Client.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Emailit.Client.Tests/Emailit.Client.Tests.csproj" />
+  </Folder>
+</Solution>
