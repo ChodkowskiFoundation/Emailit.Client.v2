@@ -5,7 +5,7 @@ A comprehensive .NET client library for the [Emailit API v2](https://emailit.com
 ## Installation
 
 ```bash
-dotnet add package Emailit.Client
+dotnet add package Emailit.Client.v2
 ```
 
 **Target frameworks:** .NET 8.0, .NET 9.0, .NET 10.0
