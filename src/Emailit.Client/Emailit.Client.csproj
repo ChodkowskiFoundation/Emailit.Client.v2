@@ -10,16 +10,23 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
 
     <!-- NuGet Package Properties -->
-    <PackageId>Emailit.Client</PackageId>
-    <Version>1.0.0</Version>
+    <PackageId>Emailit.Client.v2</PackageId>
+    <Version>2.0.0</Version>
     <Authors>Konstanty Chodkowski</Authors>
     <Company>Konstanty Chodkowski Foundation</Company>
     <Copyright>Copyright (c) 2025 MassMailer</Copyright>
-    <Description>A comprehensive .NET client library for the Emailit API v2. Supports all API endpoints including emails, domains, audiences, subscribers, templates, suppressions, and email verification.</Description>
-    <PackageTags>emailit;email;api;client;smtp;transactional</PackageTags>
+    <Description>A comprehensive .NET client library for the Emailit API v2. Supports all API endpoints including emails, domains, audiences, subscribers, templates, suppressions, and email verification. Built on Flurl HTTP with full async/await support, dependency injection integration, and typed exception handling.</Description>
+    <PackageTags>emailit;email;api;client;smtp;transactional;email-verification;email-api</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/ChodkowskiFoundation/Emailit.Client.v2</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/ChodkowskiFoundation/Emailit.Client.v2</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Flurl" Version="4.0.0" />
