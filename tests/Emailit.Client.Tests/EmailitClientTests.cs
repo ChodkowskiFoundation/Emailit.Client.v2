@@ -323,52 +323,77 @@ public sealed class EmailitClientTests : IDisposable
     #region CancelEmailAsync Tests
 
     [Fact]
-    public async Task CancelEmailAsync_Success_ReturnsTrue()
+    public async Task CancelEmailAsync_Success_ReturnsCancelResponse()
     {
         // Arrange
-        _httpTest.RespondWithJson(new { id = "em_123", cancelled = true });
+        _httpTest.RespondWithJson(new
+        {
+            @object = "email",
+            id = "em_123",
+            status = "canceled",
+            message = "Email has been canceled successfully"
+        });
 
         // Act
         var result = await _client.CancelEmailAsync("em_123");
 
         // Assert
-        result.Should().BeTrue();
+        result.Status.Should().Be("canceled");
+        result.Id.Should().Be("em_123");
         _httpTest.ShouldHaveCalled("https://api.emailit.com/v2/emails/em_123/cancel")
             .WithVerb(HttpMethod.Post)
             .Times(1);
     }
 
     [Fact]
-    public async Task CancelEmailAsync_Failed_ReturnsFalse()
+    public async Task CancelEmailAsync_NotCancelable_ThrowsException()
     {
         // Arrange
         _httpTest.RespondWithJson(new { error = "cannot_cancel", message = "Email already sent" }, 400);
 
-        // Act
-        var result = await _client.CancelEmailAsync("em_123");
-
-        // Assert
-        result.Should().BeFalse();
+        // Act & Assert
+        await Assert.ThrowsAsync<EmailitValidationException>(
+            () => _client.CancelEmailAsync("em_123"));
     }
 
     #endregion
 
-    #region ResendEmailAsync Tests
+    #region RetryEmailAsync Tests
 
     [Fact]
-    public async Task ResendEmailAsync_Success_CallsResendEndpoint()
+    public async Task RetryEmailAsync_Success_ReturnsRetryResponse()
     {
         // Arrange
-        _httpTest.RespondWithJson(new { id = "em_456", status = "queued", created_at = DateTime.UtcNow });
+        _httpTest.RespondWithJson(new
+        {
+            @object = "email",
+            id = "em_new789",
+            original_id = "em_123",
+            status = "pending",
+            message = "Email has been queued for retry"
+        });
 
         // Act
-        var result = await _client.ResendEmailAsync("em_123");
+        var result = await _client.RetryEmailAsync("em_123");
 
         // Assert
-        result.Id.Should().Be("em_456");
-        _httpTest.ShouldHaveCalled("https://api.emailit.com/v2/emails/em_123/resend")
+        result.Id.Should().Be("em_new789");
+        result.OriginalId.Should().Be("em_123");
+        result.Status.Should().Be("pending");
+        _httpTest.ShouldHaveCalled("https://api.emailit.com/v2/emails/em_123/retry")
             .WithVerb(HttpMethod.Post)
             .Times(1);
+    }
+
+    [Fact]
+    public async Task RetryEmailAsync_NotRetryable_ThrowsException()
+    {
+        // Arrange
+        _httpTest.RespondWithJson(new { error = "not_retryable", message = "Email cannot be retried" }, 400);
+
+        // Act & Assert
+        await Assert.ThrowsAsync<EmailitValidationException>(
+            () => _client.RetryEmailAsync("em_123"));
     }
 
     #endregion

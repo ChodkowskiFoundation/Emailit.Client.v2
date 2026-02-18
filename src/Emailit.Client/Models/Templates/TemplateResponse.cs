@@ -26,10 +26,28 @@ public sealed record TemplateResponse
     public string Name { get; init; } = null!;
 
     /// <summary>
+    /// Grouping alias.
+    /// </summary>
+    [JsonPropertyName("alias")]
+    public string? Alias { get; init; }
+
+    /// <summary>
+    /// Sender in RFC format.
+    /// </summary>
+    [JsonPropertyName("from")]
+    public string? From { get; init; }
+
+    /// <summary>
     /// Email subject line.
     /// </summary>
     [JsonPropertyName("subject")]
     public string? Subject { get; init; }
+
+    /// <summary>
+    /// Reply-to address(es).
+    /// </summary>
+    [JsonPropertyName("reply_to")]
+    public IReadOnlyList<string>? ReplyTo { get; init; }
 
     /// <summary>
     /// HTML content of the template.
@@ -44,16 +62,28 @@ public sealed record TemplateResponse
     public string? Text { get; init; }
 
     /// <summary>
-    /// Template version number.
+    /// Editor type: "html", "tiptap", or "dragit".
     /// </summary>
-    [JsonPropertyName("version")]
-    public int? Version { get; init; }
+    [JsonPropertyName("editor")]
+    public string? Editor { get; init; }
 
     /// <summary>
-    /// Whether the template is published.
+    /// When the template was published.
     /// </summary>
-    [JsonPropertyName("published")]
-    public bool? Published { get; init; }
+    [JsonPropertyName("published_at")]
+    public DateTime? PublishedAt { get; init; }
+
+    /// <summary>
+    /// Preview URL for the template.
+    /// </summary>
+    [JsonPropertyName("preview_url")]
+    public string? PreviewUrl { get; init; }
+
+    /// <summary>
+    /// Template version history.
+    /// </summary>
+    [JsonPropertyName("versions")]
+    public List<TemplateResponse>? Versions { get; init; }
 
     /// <summary>
     /// Creation timestamp.

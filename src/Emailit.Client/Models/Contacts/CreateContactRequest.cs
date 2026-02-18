@@ -1,44 +1,50 @@
 using System.Text.Json.Serialization;
 
-namespace Emailit.Client.Models.Subscribers;
+namespace Emailit.Client.Models.Contacts;
 
 /// <summary>
-/// Request to update a subscriber.
+/// Request model for creating a contact.
 /// </summary>
-public sealed class UpdateSubscriberRequest
+public sealed class CreateContactRequest
 {
     /// <summary>
-    /// New email address.
+    /// Contact email address.
     /// </summary>
     [JsonPropertyName("email")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? Email { get; init; }
+    public required string Email { get; init; }
 
     /// <summary>
-    /// First name.
+    /// Contact first name.
     /// </summary>
     [JsonPropertyName("first_name")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? FirstName { get; init; }
 
     /// <summary>
-    /// Last name.
+    /// Contact last name.
     /// </summary>
     [JsonPropertyName("last_name")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? LastName { get; init; }
 
     /// <summary>
-    /// Custom fields for the subscriber.
+    /// Custom fields as key-value pairs.
     /// </summary>
     [JsonPropertyName("custom_fields")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, object>? CustomFields { get; init; }
 
     /// <summary>
-    /// Subscription status. Set to false to unsubscribe.
+    /// Array of audience IDs to subscribe the contact to.
     /// </summary>
-    [JsonPropertyName("subscribed")]
+    [JsonPropertyName("audiences")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public bool? Subscribed { get; init; }
+    public IReadOnlyList<string>? Audiences { get; init; }
+
+    /// <summary>
+    /// Global unsubscribe status.
+    /// </summary>
+    [JsonPropertyName("unsubscribed")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Unsubscribed { get; init; }
 }

@@ -8,14 +8,22 @@ namespace Emailit.Client.Models.Domains;
 public sealed class CreateDomainRequest
 {
     /// <summary>
-    /// Domain name (e.g., "example.com").
+    /// Domain name (e.g., "mail.yourdomain.com").
     /// </summary>
     [JsonPropertyName("name")]
     public required string Name { get; init; }
 
     /// <summary>
-    /// Default sender email address for this domain.
+    /// Enable email load/open tracking.
     /// </summary>
-    [JsonPropertyName("from_email")]
-    public required string FromEmail { get; init; }
+    [JsonPropertyName("track_loads")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? TrackLoads { get; init; }
+
+    /// <summary>
+    /// Enable click tracking.
+    /// </summary>
+    [JsonPropertyName("track_clicks")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? TrackClicks { get; init; }
 }

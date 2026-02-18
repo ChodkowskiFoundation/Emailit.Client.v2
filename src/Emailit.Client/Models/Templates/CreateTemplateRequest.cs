@@ -8,17 +8,37 @@ namespace Emailit.Client.Models.Templates;
 public sealed class CreateTemplateRequest
 {
     /// <summary>
-    /// Template name.
+    /// Template name (max 191 chars).
     /// </summary>
     [JsonPropertyName("name")]
     public required string Name { get; init; }
 
     /// <summary>
-    /// Email subject line (can contain variables).
+    /// Grouping alias. Lowercase letters, numbers, underscores, hyphens only (max 191 chars).
+    /// </summary>
+    [JsonPropertyName("alias")]
+    public required string Alias { get; init; }
+
+    /// <summary>
+    /// Sender in RFC format (max 191 chars).
+    /// </summary>
+    [JsonPropertyName("from")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? From { get; init; }
+
+    /// <summary>
+    /// Email subject line (can contain variables, max 191 chars).
     /// </summary>
     [JsonPropertyName("subject")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Subject { get; init; }
+
+    /// <summary>
+    /// Reply-to address(es).
+    /// </summary>
+    [JsonPropertyName("reply_to")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? ReplyTo { get; init; }
 
     /// <summary>
     /// HTML content of the template.
@@ -33,4 +53,11 @@ public sealed class CreateTemplateRequest
     [JsonPropertyName("text")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Text { get; init; }
+
+    /// <summary>
+    /// Editor type: "html" (default), "tiptap", or "dragit".
+    /// </summary>
+    [JsonPropertyName("editor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Editor { get; init; }
 }

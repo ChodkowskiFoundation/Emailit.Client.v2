@@ -1,50 +1,56 @@
 using System.Text.Json.Serialization;
 
-namespace Emailit.Client.Models.ApiKeys;
+namespace Emailit.Client.Models.Webhooks;
 
 /// <summary>
-/// Response model for API key operations.
+/// Response model for webhook operations.
 /// </summary>
-public sealed record ApiKeyResponse
+public sealed record WebhookResponse
 {
     /// <summary>
     /// Object type identifier.
     /// </summary>
     [JsonPropertyName("object")]
-    public string Object { get; init; } = "api_key";
+    public string Object { get; init; } = "webhook";
 
     /// <summary>
-    /// Unique API key identifier.
+    /// Unique webhook identifier (prefixed with wh_).
     /// </summary>
     [JsonPropertyName("id")]
     public string Id { get; init; } = null!;
 
     /// <summary>
-    /// API key name.
+    /// Webhook name.
     /// </summary>
     [JsonPropertyName("name")]
     public string Name { get; init; } = null!;
 
     /// <summary>
-    /// Key scope (full or sending).
+    /// HTTPS endpoint URL.
     /// </summary>
-    [JsonPropertyName("scope")]
-    public string? Scope { get; init; }
+    [JsonPropertyName("url")]
+    public string Url { get; init; } = null!;
 
     /// <summary>
-    /// Associated sending domain ID.
+    /// Whether the webhook is subscribed to all events.
     /// </summary>
-    [JsonPropertyName("sending_domain_id")]
-    public string? SendingDomainId { get; init; }
+    [JsonPropertyName("all_events")]
+    public bool AllEvents { get; init; }
 
     /// <summary>
-    /// The actual API key value (only returned on creation).
+    /// Whether the webhook is active.
     /// </summary>
-    [JsonPropertyName("key")]
-    public string? Key { get; init; }
+    [JsonPropertyName("enabled")]
+    public bool Enabled { get; init; }
 
     /// <summary>
-    /// When the API key was last used.
+    /// Subscribed event types.
+    /// </summary>
+    [JsonPropertyName("events")]
+    public List<string>? Events { get; init; }
+
+    /// <summary>
+    /// Timestamp of last webhook delivery.
     /// </summary>
     [JsonPropertyName("last_used_at")]
     public DateTime? LastUsedAt { get; init; }

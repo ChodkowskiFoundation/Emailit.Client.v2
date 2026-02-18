@@ -1,11 +1,11 @@
 using System.Text.Json.Serialization;
 
-namespace Emailit.Client.Models.Subscribers;
+namespace Emailit.Client.Models.Contacts;
 
 /// <summary>
-/// Request to update a subscriber.
+/// Request model for updating a contact.
 /// </summary>
-public sealed class UpdateSubscriberRequest
+public sealed class UpdateContactRequest
 {
     /// <summary>
     /// New email address.
@@ -15,30 +15,30 @@ public sealed class UpdateSubscriberRequest
     public string? Email { get; init; }
 
     /// <summary>
-    /// First name.
+    /// Updated first name.
     /// </summary>
     [JsonPropertyName("first_name")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? FirstName { get; init; }
 
     /// <summary>
-    /// Last name.
+    /// Updated last name.
     /// </summary>
     [JsonPropertyName("last_name")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? LastName { get; init; }
 
     /// <summary>
-    /// Custom fields for the subscriber.
+    /// Replace custom fields.
     /// </summary>
     [JsonPropertyName("custom_fields")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public Dictionary<string, object>? CustomFields { get; init; }
 
     /// <summary>
-    /// Subscription status. Set to false to unsubscribe.
+    /// Global unsubscribe status.
     /// </summary>
-    [JsonPropertyName("subscribed")]
+    [JsonPropertyName("unsubscribed")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public bool? Subscribed { get; init; }
+    public bool? Unsubscribed { get; init; }
 }

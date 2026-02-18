@@ -32,4 +32,18 @@ public sealed class EmailAttachment
     /// </summary>
     [JsonPropertyName("content_type")]
     public required string ContentType { get; init; }
+
+    /// <summary>
+    /// Content ID for inline images (cid:).
+    /// </summary>
+    [JsonPropertyName("content_id")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ContentId { get; init; }
+
+    /// <summary>
+    /// Content encoding (default: base64).
+    /// </summary>
+    [JsonPropertyName("encoding")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Encoding { get; init; }
 }

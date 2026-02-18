@@ -15,11 +15,32 @@ public sealed class UpdateTemplateRequest
     public string? Name { get; init; }
 
     /// <summary>
+    /// Grouping alias.
+    /// </summary>
+    [JsonPropertyName("alias")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Alias { get; init; }
+
+    /// <summary>
+    /// Sender in RFC format.
+    /// </summary>
+    [JsonPropertyName("from")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? From { get; init; }
+
+    /// <summary>
     /// Email subject line (can contain variables).
     /// </summary>
     [JsonPropertyName("subject")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Subject { get; init; }
+
+    /// <summary>
+    /// Reply-to address(es).
+    /// </summary>
+    [JsonPropertyName("reply_to")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public IReadOnlyList<string>? ReplyTo { get; init; }
 
     /// <summary>
     /// HTML content of the template.
@@ -34,4 +55,11 @@ public sealed class UpdateTemplateRequest
     [JsonPropertyName("text")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Text { get; init; }
+
+    /// <summary>
+    /// Editor type: "html", "tiptap", or "dragit".
+    /// </summary>
+    [JsonPropertyName("editor")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Editor { get; init; }
 }

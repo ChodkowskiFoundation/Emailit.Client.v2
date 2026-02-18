@@ -9,7 +9,10 @@ using Emailit.Client.Models.Emails;
 using Emailit.Client.Models.Subscribers;
 using Emailit.Client.Models.Suppressions;
 using Emailit.Client.Models.Templates;
+using Emailit.Client.Models.Contacts;
+using Emailit.Client.Models.Events;
 using Emailit.Client.Models.Verification;
+using Emailit.Client.Models.Webhooks;
 
 using Flurl;
 using Flurl.Http;
@@ -90,20 +93,10 @@ public sealed class EmailitClient : IEmailitClient
             () => _client.Request("/v2/emails", emailId).PostJsonAsync(request, cancellationToken: ct),
             ct);
 
-    public async Task<bool> CancelEmailAsync(string emailId, CancellationToken ct = default)
-    {
-        try
-        {
-            var response = await ExecuteAsync<CancelEmailResponse>(
-                () => _client.Request("/v2/emails", emailId, "cancel").PostAsync(cancellationToken: ct),
-                ct);
-            return response.Cancelled;
-        }
-        catch (EmailitException)
-        {
-            return false;
-        }
-    }
+    public Task<CancelEmailResponse> CancelEmailAsync(string emailId, CancellationToken ct = default) =>
+        ExecuteAsync<CancelEmailResponse>(
+            () => _client.Request("/v2/emails", emailId, "cancel").PostAsync(cancellationToken: ct),
+            ct);
 
     public Task<CursorPaginatedResponse<EmailResponse>> ListEmailsAsync(
         ListEmailsRequest? request = null,
@@ -137,6 +130,12 @@ public sealed class EmailitClient : IEmailitClient
             () => req.GetAsync(cancellationToken: ct), ct);
     }
 
+    public Task<RetryEmailResponse> RetryEmailAsync(string emailId, CancellationToken ct = default) =>
+        ExecuteAsync<RetryEmailResponse>(
+            () => _client.Request("/v2/emails", emailId, "retry").PostAsync(cancellationToken: ct),
+            ct);
+
+    [Obsolete("Use RetryEmailAsync instead. This method will be removed in a future version.")]
     public Task<EmailResponse> ResendEmailAsync(string emailId, CancellationToken ct = default) =>
         ExecuteAsync<EmailResponse>(
             () => _client.Request("/v2/emails", emailId, "resend").PostAsync(cancellationToken: ct),
@@ -165,7 +164,7 @@ public sealed class EmailitClient : IEmailitClient
 
     public Task<DomainResponse> UpdateDomainAsync(string domainId, UpdateDomainRequest request, CancellationToken ct = default) =>
         ExecuteAsync<DomainResponse>(
-            () => _client.Request("/v2/domains", domainId).PostJsonAsync(request, cancellationToken: ct),
+            () => _client.Request("/v2/domains", domainId).PatchJsonAsync(request, cancellationToken: ct),
             ct);
 
     public Task<DomainResponse> VerifyDomainAsync(string domainId, CancellationToken ct = default) =>
@@ -254,12 +253,17 @@ public sealed class EmailitClient : IEmailitClient
             () => _client.Request("/v2/audiences", audienceId, "subscribers", subscriberId).GetAsync(cancellationToken: ct),
             ct);
 
-    public Task<PaginatedResponse<SubscriberResponse>> ListSubscribersAsync(string audienceId, int page = 1, int limit = 100, CancellationToken ct = default) =>
-        ExecuteAsync<PaginatedResponse<SubscriberResponse>>(
-            () => _client.Request("/v2/audiences", audienceId, "subscribers")
-                .SetQueryParams(new { page, limit })
-                .GetAsync(cancellationToken: ct),
-            ct);
+    public Task<PaginatedResponse<SubscriberResponse>> ListSubscribersAsync(string audienceId, int page = 1, int limit = 100, bool? subscribed = null, CancellationToken ct = default)
+    {
+        var req = _client.Request("/v2/audiences", audienceId, "subscribers")
+            .SetQueryParams(new { page, limit });
+
+        if (subscribed.HasValue)
+            req.SetQueryParam("subscribed", subscribed.Value.ToString().ToLowerInvariant());
+
+        return ExecuteAsync<PaginatedResponse<SubscriberResponse>>(
+            () => req.GetAsync(cancellationToken: ct), ct);
+    }
 
     public Task<SubscriberResponse> UpdateSubscriberAsync(string audienceId, string subscriberId, UpdateSubscriberRequest request, CancellationToken ct = default) =>
         ExecuteAsync<SubscriberResponse>(
@@ -275,32 +279,63 @@ public sealed class EmailitClient : IEmailitClient
 
     #region Templates
 
-    public Task<TemplateResponse> CreateTemplateAsync(CreateTemplateRequest request, CancellationToken ct = default) =>
-        ExecuteAsync<TemplateResponse>(
+    public async Task<TemplateResponse> CreateTemplateAsync(CreateTemplateRequest request, CancellationToken ct = default)
+    {
+        var wrapper = await ExecuteAsync<TemplateDataResponse>(
             () => _client.Request("/v2/templates").PostJsonAsync(request, cancellationToken: ct),
             ct);
+        return wrapper.Data ?? throw new Exceptions.EmailitException("Failed to deserialize template response");
+    }
 
-    public Task<TemplateResponse> GetTemplateAsync(string templateId, CancellationToken ct = default) =>
-        ExecuteAsync<TemplateResponse>(
+    public async Task<TemplateResponse> GetTemplateAsync(string templateId, CancellationToken ct = default)
+    {
+        var wrapper = await ExecuteAsync<TemplateDataResponse>(
             () => _client.Request("/v2/templates", templateId).GetAsync(cancellationToken: ct),
             ct);
+        return wrapper.Data ?? throw new Exceptions.EmailitException("Failed to deserialize template response");
+    }
 
-    public Task<PaginatedResponse<TemplateResponse>> ListTemplatesAsync(int page = 1, int limit = 100, CancellationToken ct = default) =>
-        ExecuteAsync<PaginatedResponse<TemplateResponse>>(
-            () => _client.Request("/v2/templates")
-                .SetQueryParams(new { page, limit })
-                .GetAsync(cancellationToken: ct),
-            ct);
+    public Task<TemplatePaginatedResponse> ListTemplatesAsync(ListTemplatesRequest? request = null, CancellationToken ct = default)
+    {
+        var req = _client.Request("/v2/templates");
 
-    public Task<TemplateResponse> UpdateTemplateAsync(string templateId, UpdateTemplateRequest request, CancellationToken ct = default) =>
-        ExecuteAsync<TemplateResponse>(
+        var page = request?.Page ?? 1;
+        var perPage = request?.PerPage ?? 25;
+        req.SetQueryParams(new { page, per_page = perPage });
+
+        if (request != null)
+        {
+            if (!string.IsNullOrEmpty(request.FilterName))
+                req.SetQueryParam("filter[name]", request.FilterName);
+            if (!string.IsNullOrEmpty(request.FilterAlias))
+                req.SetQueryParam("filter[alias]", request.FilterAlias);
+            if (!string.IsNullOrEmpty(request.FilterEditor))
+                req.SetQueryParam("filter[editor]", request.FilterEditor);
+            if (!string.IsNullOrEmpty(request.Sort))
+                req.SetQueryParam("sort", request.Sort);
+            if (!string.IsNullOrEmpty(request.Order))
+                req.SetQueryParam("order", request.Order);
+        }
+
+        return ExecuteAsync<TemplatePaginatedResponse>(
+            () => req.GetAsync(cancellationToken: ct), ct);
+    }
+
+    public async Task<TemplateResponse> UpdateTemplateAsync(string templateId, UpdateTemplateRequest request, CancellationToken ct = default)
+    {
+        var wrapper = await ExecuteAsync<TemplateDataResponse>(
             () => _client.Request("/v2/templates", templateId).PostJsonAsync(request, cancellationToken: ct),
             ct);
+        return wrapper.Data ?? throw new Exceptions.EmailitException("Failed to deserialize template response");
+    }
 
-    public Task<TemplateResponse> PublishTemplateAsync(string templateId, CancellationToken ct = default) =>
-        ExecuteAsync<TemplateResponse>(
+    public async Task<TemplateResponse> PublishTemplateAsync(string templateId, CancellationToken ct = default)
+    {
+        var wrapper = await ExecuteAsync<TemplateDataResponse>(
             () => _client.Request("/v2/templates", templateId, "publish").PostAsync(cancellationToken: ct),
             ct);
+        return wrapper.Data ?? throw new Exceptions.EmailitException("Failed to deserialize template response");
+    }
 
     public Task<DeleteTemplateResponse> DeleteTemplateAsync(string templateId, CancellationToken ct = default) =>
         ExecuteAsync<DeleteTemplateResponse>(
@@ -389,6 +424,95 @@ public sealed class EmailitClient : IEmailitClient
             throw; // unreachable — HandleErrorAsync always throws
         }
     }
+
+    #endregion
+
+    #region Events
+
+    public Task<PaginatedResponse<EventResponse>> ListEventsAsync(ListEventsRequest? request = null, CancellationToken ct = default)
+    {
+        var req = _client.Request("/v2/events");
+
+        if (request != null)
+        {
+            req.SetQueryParams(new { page = request.Page, limit = request.Limit });
+
+            if (!string.IsNullOrEmpty(request.Type))
+                req.SetQueryParam("type", request.Type);
+            if (request.IncludeData == true)
+                req.SetQueryParam("include_data", "true");
+        }
+
+        return ExecuteAsync<PaginatedResponse<EventResponse>>(
+            () => req.GetAsync(cancellationToken: ct), ct);
+    }
+
+    public Task<EventResponse> GetEventAsync(string eventId, CancellationToken ct = default) =>
+        ExecuteAsync<EventResponse>(
+            () => _client.Request("/v2/events", eventId).GetAsync(cancellationToken: ct),
+            ct);
+
+    #endregion
+
+    #region Contacts
+
+    public Task<ContactResponse> CreateContactAsync(CreateContactRequest request, CancellationToken ct = default) =>
+        ExecuteAsync<ContactResponse>(
+            () => _client.Request("/v2/contacts").PostJsonAsync(request, cancellationToken: ct),
+            ct);
+
+    public Task<ContactResponse> GetContactAsync(string contactIdOrEmail, CancellationToken ct = default) =>
+        ExecuteAsync<ContactResponse>(
+            () => _client.Request("/v2/contacts", contactIdOrEmail).GetAsync(cancellationToken: ct),
+            ct);
+
+    public Task<PaginatedResponse<ContactResponse>> ListContactsAsync(int page = 1, int limit = 100, CancellationToken ct = default) =>
+        ExecuteAsync<PaginatedResponse<ContactResponse>>(
+            () => _client.Request("/v2/contacts")
+                .SetQueryParams(new { page, limit })
+                .GetAsync(cancellationToken: ct),
+            ct);
+
+    public Task<ContactResponse> UpdateContactAsync(string contactIdOrEmail, UpdateContactRequest request, CancellationToken ct = default) =>
+        ExecuteAsync<ContactResponse>(
+            () => _client.Request("/v2/contacts", contactIdOrEmail).PostJsonAsync(request, cancellationToken: ct),
+            ct);
+
+    public Task<DeleteContactResponse> DeleteContactAsync(string contactId, CancellationToken ct = default) =>
+        ExecuteAsync<DeleteContactResponse>(
+            () => _client.Request("/v2/contacts", contactId).DeleteAsync(cancellationToken: ct),
+            ct);
+
+    #endregion
+
+    #region Webhooks
+
+    public Task<WebhookResponse> CreateWebhookAsync(CreateWebhookRequest request, CancellationToken ct = default) =>
+        ExecuteAsync<WebhookResponse>(
+            () => _client.Request("/v2/webhooks").PostJsonAsync(request, cancellationToken: ct),
+            ct);
+
+    public Task<WebhookResponse> GetWebhookAsync(string webhookId, CancellationToken ct = default) =>
+        ExecuteAsync<WebhookResponse>(
+            () => _client.Request("/v2/webhooks", webhookId).GetAsync(cancellationToken: ct),
+            ct);
+
+    public Task<PaginatedResponse<WebhookResponse>> ListWebhooksAsync(int page = 1, int limit = 100, CancellationToken ct = default) =>
+        ExecuteAsync<PaginatedResponse<WebhookResponse>>(
+            () => _client.Request("/v2/webhooks")
+                .SetQueryParams(new { page, limit })
+                .GetAsync(cancellationToken: ct),
+            ct);
+
+    public Task<WebhookResponse> UpdateWebhookAsync(string webhookId, UpdateWebhookRequest request, CancellationToken ct = default) =>
+        ExecuteAsync<WebhookResponse>(
+            () => _client.Request("/v2/webhooks", webhookId).PostJsonAsync(request, cancellationToken: ct),
+            ct);
+
+    public Task<DeleteWebhookResponse> DeleteWebhookAsync(string webhookId, CancellationToken ct = default) =>
+        ExecuteAsync<DeleteWebhookResponse>(
+            () => _client.Request("/v2/webhooks", webhookId).DeleteAsync(cancellationToken: ct),
+            ct);
 
     #endregion
 

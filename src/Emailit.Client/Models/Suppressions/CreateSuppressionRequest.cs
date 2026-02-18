@@ -14,7 +14,7 @@ public sealed class CreateSuppressionRequest
     public required string Email { get; init; }
 
     /// <summary>
-    /// Suppression type: "hard_bounce", "soft_bounce", "spam_complaint", "unsubscribe", "manual".
+    /// Suppression type: "recipient", "bounce", "complaint", "unsubscribe".
     /// </summary>
     [JsonPropertyName("type")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -26,4 +26,11 @@ public sealed class CreateSuppressionRequest
     [JsonPropertyName("reason")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? Reason { get; init; }
+
+    /// <summary>
+    /// Expiration datetime (ISO 8601). Null for permanent suppression.
+    /// </summary>
+    [JsonPropertyName("keep_until")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? KeepUntil { get; init; }
 }
