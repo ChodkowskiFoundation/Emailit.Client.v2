@@ -3,23 +3,16 @@ using System.Text.Json.Serialization;
 namespace Emailit.Client.Models.Domains;
 
 /// <summary>
-/// Request to update a domain's settings.
+/// Request to update a domain's settings. Sent via PATCH.
 /// </summary>
 public sealed class UpdateDomainRequest
 {
     /// <summary>
-    /// Default sender email address.
+    /// Enable load/open tracking.
     /// </summary>
-    [JsonPropertyName("from_email")]
+    [JsonPropertyName("track_loads")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public string? FromEmail { get; init; }
-
-    /// <summary>
-    /// Enable open tracking.
-    /// </summary>
-    [JsonPropertyName("track_opens")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public bool? TrackOpens { get; init; }
+    public bool? TrackLoads { get; init; }
 
     /// <summary>
     /// Enable click tracking.
@@ -27,4 +20,18 @@ public sealed class UpdateDomainRequest
     [JsonPropertyName("track_clicks")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public bool? TrackClicks { get; init; }
+
+    /// <summary>
+    /// Custom subdomain for tracking CNAME (default: "go").
+    /// </summary>
+    [JsonPropertyName("tracking_key")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? TrackingKey { get; init; }
+
+    /// <summary>
+    /// Custom subdomain for inbound CNAME (default: "inbound").
+    /// </summary>
+    [JsonPropertyName("inbound_key")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? InboundKey { get; init; }
 }

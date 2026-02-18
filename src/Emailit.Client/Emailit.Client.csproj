@@ -11,12 +11,12 @@
 
     <!-- NuGet Package Properties -->
     <PackageId>Emailit.Client.v2</PackageId>
-    <Version>2.0.0</Version>
+    <Version>2.0.1</Version>
     <Authors>Konstanty Chodkowski</Authors>
     <Company>Konstanty Chodkowski Foundation</Company>
     <Copyright>Copyright (c) 2025 MassMailer</Copyright>
-    <Description>A comprehensive .NET client library for the Emailit API v2. Supports all API endpoints including emails, domains, audiences, subscribers, templates, suppressions, and email verification. Built on Flurl HTTP with full async/await support, dependency injection integration, and typed exception handling.</Description>
-    <PackageTags>emailit;email;api;client;smtp;transactional;email-verification;email-api</PackageTags>
+    <Description>A comprehensive .NET client library for the Emailit API v2. Supports all API endpoints including emails, domains, audiences, subscribers, templates, suppressions, email verification, contacts, events, and webhooks. Built on Flurl HTTP with full async/await support, dependency injection integration, and typed exception handling.</Description>
+    <PackageTags>emailit;email;api;client;smtp;transactional;email-verification;email-api;webhooks;contacts</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/ChodkowskiFoundation/Emailit.Client.v2</PackageProjectUrl>
     <RepositoryUrl>https://github.com/ChodkowskiFoundation/Emailit.Client.v2</RepositoryUrl>

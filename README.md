@@ -1,6 +1,6 @@
 # Emailit.Client v2
 
-A comprehensive .NET client library for the [Emailit API v2](https://emailit.com/docs/api-reference). Built on top of [Flurl HTTP](https://flurl.dev/docs/fluent-http/), it supports all API endpoints including emails, domains, audiences, subscribers, templates, suppressions, and email verification.
+A comprehensive .NET client library for the [Emailit API v2](https://emailit.com/docs/api-reference). Built on top of [Flurl HTTP](https://flurl.dev/docs/fluent-http/), it supports all API endpoints including emails, domains, audiences, subscribers, templates, suppressions, email verification, contacts, events, and webhooks.
 
 ## Installation
 
@@ -125,8 +125,11 @@ var response = await _emailit.SendEmailAsync(new SendEmailRequest
     To = ["recipient@example.com"],
     Subject = "Hello from Emailit!",
     Html = "<h1>Welcome!</h1><p>This is a test email.</p>",
-    TrackOpens = true,
-    TrackClicks = true
+    Tracking = new EmailTrackingOptions
+    {
+        Loads = true,
+        Clicks = true
+    }
 });
 
 Console.WriteLine($"Email ID: {response.Id}, Status: {response.Status}");
@@ -139,7 +142,6 @@ var response = await _emailit.SendEmailAsync(new SendEmailRequest
 {
     From = "sender@yourdomain.com",
     To = ["recipient@example.com"],
-    Subject = "Welcome {{first_name}}!",
     TemplateId = "tpl_abc123",
     Variables = new Dictionary<string, object>
     {
@@ -176,6 +178,27 @@ var response = await _emailit.SendEmailAsync(new SendEmailRequest
 });
 ```
 
+### Send with Custom Headers and Metadata
+
+```csharp
+var response = await _emailit.SendEmailAsync(new SendEmailRequest
+{
+    From = "sender@yourdomain.com",
+    To = ["recipient@example.com"],
+    Subject = "Order Confirmation",
+    Html = "<p>Your order has been confirmed.</p>",
+    Headers = new Dictionary<string, string>
+    {
+        ["X-Custom-Header"] = "custom-value"
+    },
+    Meta = new Dictionary<string, string>
+    {
+        ["order_id"] = "ORD-12345",
+        ["customer_id"] = "CUS-678"
+    }
+});
+```
+
 ### Schedule an Email
 
 ```csharp
@@ -185,17 +208,18 @@ var response = await _emailit.SendEmailAsync(new SendEmailRequest
     To = ["recipient@example.com"],
     Subject = "Scheduled Email",
     Html = "<p>This was scheduled!</p>",
-    ScheduledAt = "2025-12-25T10:00:00Z" // ISO 8601, Unix timestamp, or natural language
+    ScheduledAt = "2026-12-25T10:00:00Z" // ISO 8601, Unix timestamp, or natural language
 });
 
 // Update the scheduled time
 await _emailit.UpdateScheduledEmailAsync(response.Id, new UpdateScheduledEmailRequest
 {
-    ScheduledAt = "2025-12-26T10:00:00Z"
+    ScheduledAt = "2026-12-26T10:00:00Z"
 });
 
 // Or cancel if no longer needed
-await _emailit.CancelEmailAsync(response.Id);
+var cancelResult = await _emailit.CancelEmailAsync(response.Id);
+Console.WriteLine($"Cancel status: {cancelResult.Status}");
 ```
 
 ### Use Idempotency Key
@@ -222,7 +246,7 @@ var emails = await _emailit.ListEmailsAsync(new ListEmailsRequest
     Limit = 50,
     Status = "delivered",
     From = "sender@yourdomain.com",
-    CreatedAfter = "2025-01-01T00:00:00Z"
+    CreatedAfter = "2026-01-01T00:00:00Z"
 });
 
 foreach (var email in emails.Data)
@@ -240,17 +264,15 @@ if (emails.HasMore)
 }
 ```
 
-### Check Email Status and Resend
+### Retry a Failed Email
 
 ```csharp
 var email = await _emailit.GetEmailAsync("em_abc123");
-Console.WriteLine($"Status: {email.Status}, Delivered: {email.DeliveredAt}");
 
-// Resend a failed email (creates a new email with a new ID)
 if (email.Status == "bounced")
 {
-    var resent = await _emailit.ResendEmailAsync(email.Id);
-    Console.WriteLine($"Resent as: {resent.Id}");
+    var retried = await _emailit.RetryEmailAsync(email.Id);
+    Console.WriteLine($"Retried as: {retried.Id}, Status: {retried.Status}");
 }
 ```
 
@@ -262,10 +284,23 @@ var result = await _emailit.VerifyEmailAsync(new VerifyEmailRequest
     Email = "test@example.com"
 });
 
-Console.WriteLine($"Result: {result.Result}"); // valid, invalid, risky, unknown
-Console.WriteLine($"Risk Score: {result.RiskScore}");
-Console.WriteLine($"Disposable: {result.IsDisposable}");
-Console.WriteLine($"Deliverable: {result.IsDeliverable}");
+Console.WriteLine($"Result: {result.Result}"); // safe, invalid, risky, unknown
+Console.WriteLine($"Score: {result.Score}");
+Console.WriteLine($"Risk: {result.Risk}");
+
+// Detailed checks
+if (result.Checks != null)
+{
+    Console.WriteLine($"Disposable: {result.Checks.Disposable}");
+    Console.WriteLine($"Deliverable: {result.Checks.Deliverable}");
+    Console.WriteLine($"Free email: {result.Checks.FreeEmail}");
+}
+
+// Parsed address
+if (result.Address != null)
+{
+    Console.WriteLine($"Mailbox: {result.Address.Mailbox}@{result.Address.Domain}");
+}
 ```
 
 ### Bulk Email Verification
@@ -303,18 +338,26 @@ if (status.Status == "completed")
 var domain = await _emailit.CreateDomainAsync(new CreateDomainRequest
 {
     Name = "yourdomain.com",
-    FromEmail = "noreply@yourdomain.com"
+    TrackLoads = true,
+    TrackClicks = true
 });
 
 // Verify DNS records
 var verified = await _emailit.VerifyDomainAsync(domain.Id);
-Console.WriteLine($"Status: {verified.Status}");
+Console.WriteLine($"SPF: {verified.SpfStatus}, DKIM: {verified.DkimStatus}");
 
 // Check required DNS records
 foreach (var record in verified.DnsRecords ?? [])
 {
     Console.WriteLine($"  {record.Type} {record.Name} -> {record.Value} ({record.Status})");
 }
+
+// Update domain settings (uses PATCH)
+await _emailit.UpdateDomainAsync(domain.Id, new UpdateDomainRequest
+{
+    TrackLoads = true,
+    TrackClicks = false
+});
 
 // List all domains
 var domains = await _emailit.ListDomainsAsync(page: 1, limit: 50);
@@ -342,17 +385,17 @@ var subscriber = await _emailit.AddSubscriberAsync(audience.Id, new AddSubscribe
     }
 });
 
-// List subscribers with pagination
-var subscribers = await _emailit.ListSubscribersAsync(audience.Id, page: 1, limit: 50);
+// List subscribers with pagination and filter
+var subscribers = await _emailit.ListSubscribersAsync(audience.Id, page: 1, limit: 50, subscribed: true);
 foreach (var sub in subscribers.Data)
 {
-    Console.WriteLine($"{sub.Email} ({sub.Status})");
+    Console.WriteLine($"{sub.Email} (subscribed: {sub.Subscribed})");
 }
 
-// Update a subscriber
+// Unsubscribe a subscriber
 await _emailit.UpdateSubscriberAsync(audience.Id, subscriber.Id, new UpdateSubscriberRequest
 {
-    FirstName = "Jonathan"
+    Subscribed = false
 });
 ```
 
@@ -363,27 +406,40 @@ await _emailit.UpdateSubscriberAsync(audience.Id, subscriber.Id, new UpdateSubsc
 var template = await _emailit.CreateTemplateAsync(new CreateTemplateRequest
 {
     Name = "Welcome Email",
+    Alias = "welcome-email",
     Subject = "Welcome, {{first_name}}!",
-    Html = "<h1>Hello {{first_name}}</h1><p>Welcome to {{company}}.</p>"
+    From = "noreply@yourdomain.com",
+    Html = "<h1>Hello {{first_name}}</h1><p>Welcome to {{company}}.</p>",
+    Editor = "html"
 });
 
 // Publish the template
 await _emailit.PublishTemplateAsync(template.Id);
 
-// List all templates
-var templates = await _emailit.ListTemplatesAsync();
+// List templates with filters
+var templates = await _emailit.ListTemplatesAsync(new ListTemplatesRequest
+{
+    PerPage = 10,
+    FilterEditor = "html",
+    Sort = "created_at",
+    Order = "desc"
+});
 ```
 
 ### Manage Suppressions
 
 ```csharp
-// Add to suppression list
+// Add to suppression list (with optional expiration)
 await _emailit.CreateSuppressionAsync(new CreateSuppressionRequest
 {
     Email = "bounced@example.com",
-    Type = "hard_bounce",
-    Reason = "Mailbox does not exist"
+    Type = "bounce",
+    Reason = "Mailbox does not exist",
+    KeepUntil = "2027-01-01T00:00:00Z" // null for permanent
 });
+
+// Look up by email address
+var suppression = await _emailit.GetSuppressionAsync("bounced@example.com");
 
 // List suppressions
 var suppressions = await _emailit.ListSuppressionsAsync();
@@ -391,6 +447,73 @@ foreach (var s in suppressions.Data)
 {
     Console.WriteLine($"{s.Email}: {s.Type} — {s.Reason}");
 }
+```
+
+### Manage Contacts
+
+```csharp
+// Create a contact
+var contact = await _emailit.CreateContactAsync(new CreateContactRequest
+{
+    Email = "user@example.com",
+    FirstName = "John",
+    LastName = "Doe",
+    Unsubscribed = false
+});
+
+// Get by ID or email
+var fetched = await _emailit.GetContactAsync("user@example.com");
+
+// Update a contact (global unsubscribe)
+await _emailit.UpdateContactAsync(contact.Id, new UpdateContactRequest
+{
+    Unsubscribed = true
+});
+
+// List all contacts
+var contacts = await _emailit.ListContactsAsync(page: 1, limit: 50);
+```
+
+### Manage Events
+
+```csharp
+// List events with filters
+var events = await _emailit.ListEventsAsync(new ListEventsRequest
+{
+    Page = 1,
+    Limit = 50,
+    Type = "email.delivered,email.bounced",
+    IncludeData = true
+});
+
+foreach (var evt in events.Data)
+{
+    Console.WriteLine($"{evt.Id}: {evt.Type} at {evt.CreatedAt}");
+}
+
+// Get a single event
+var eventDetail = await _emailit.GetEventAsync("evt_abc123");
+```
+
+### Manage Webhooks
+
+```csharp
+// Create a webhook
+var webhook = await _emailit.CreateWebhookAsync(new CreateWebhookRequest
+{
+    Name = "Production Webhook",
+    Url = "https://yourapp.com/webhooks/emailit",
+    Events = ["email.delivered", "email.bounced", "email.complained"]
+});
+
+// Update webhook
+await _emailit.UpdateWebhookAsync(webhook.Id, new UpdateWebhookRequest
+{
+    Enabled = false
+});
+
+// List all webhooks
+var webhooks = await _emailit.ListWebhooksAsync();
 ```
 
 ### Manage API Keys
@@ -405,6 +528,7 @@ var apiKey = await _emailit.CreateApiKeyAsync(new CreateApiKeyRequest
 });
 
 Console.WriteLine($"Key: {apiKey.Key}"); // Only available on creation
+Console.WriteLine($"Last used: {apiKey.LastUsedAt}");
 
 // List all API keys
 var keys = await _emailit.ListApiKeysAsync();
@@ -500,20 +624,20 @@ if (rateLimitInfo != null)
 ### Emails
 | Method | Description |
 |--------|-------------|
-| `SendEmailAsync` | Send an email (with optional scheduling, attachments, templates) |
+| `SendEmailAsync` | Send an email (with optional scheduling, attachments, templates, tracking) |
 | `GetEmailAsync` | Get email details by ID |
 | `ListEmailsAsync` | List emails with cursor-based pagination and filters |
 | `UpdateScheduledEmailAsync` | Update scheduled email's send time |
 | `CancelEmailAsync` | Cancel a scheduled email |
-| `ResendEmailAsync` | Resend a failed email (creates a new email with a new ID) |
+| `RetryEmailAsync` | Retry a failed email (creates a new email with a new ID) |
 
 ### Domains
 | Method | Description |
 |--------|-------------|
 | `CreateDomainAsync` | Create a new sending domain |
-| `GetDomainAsync` | Get domain details |
+| `GetDomainAsync` | Get domain details (includes verification statuses) |
 | `ListDomainsAsync` | List all domains (paginated) |
-| `UpdateDomainAsync` | Update domain settings |
+| `UpdateDomainAsync` | Update domain settings (PATCH) |
 | `VerifyDomainAsync` | Verify domain DNS records |
 | `DeleteDomainAsync` | Delete a domain |
 
@@ -540,16 +664,16 @@ if (rateLimitInfo != null)
 |--------|-------------|
 | `AddSubscriberAsync` | Add subscriber to audience |
 | `GetSubscriberAsync` | Get subscriber details |
-| `ListSubscribersAsync` | List subscribers in audience (paginated) |
-| `UpdateSubscriberAsync` | Update subscriber details |
+| `ListSubscribersAsync` | List subscribers in audience (paginated, filterable by subscription status) |
+| `UpdateSubscriberAsync` | Update subscriber details (including subscription status) |
 | `DeleteSubscriberAsync` | Delete subscriber from audience |
 
 ### Templates
 | Method | Description |
 |--------|-------------|
-| `CreateTemplateAsync` | Create a new template |
+| `CreateTemplateAsync` | Create a new template (with alias, editor type) |
 | `GetTemplateAsync` | Get template details |
-| `ListTemplatesAsync` | List all templates (paginated) |
+| `ListTemplatesAsync` | List templates (paginated with filters by name, alias, editor) |
 | `UpdateTemplateAsync` | Update template content |
 | `PublishTemplateAsync` | Publish a template |
 | `DeleteTemplateAsync` | Delete a template |
@@ -557,21 +681,45 @@ if (rateLimitInfo != null)
 ### Suppressions
 | Method | Description |
 |--------|-------------|
-| `CreateSuppressionAsync` | Add email to suppression list |
-| `GetSuppressionAsync` | Get suppression details |
+| `CreateSuppressionAsync` | Add email to suppression list (with optional expiration) |
+| `GetSuppressionAsync` | Get suppression details (by ID or email) |
 | `ListSuppressionsAsync` | List all suppressions (paginated) |
 | `UpdateSuppressionAsync` | Update suppression entry |
-| `DeleteSuppressionAsync` | Remove from suppression list |
+| `DeleteSuppressionAsync` | Remove from suppression list (by ID or email) |
 
 ### Email Verification
 | Method | Description |
 |--------|-------------|
-| `VerifyEmailAsync` | Verify a single email address |
+| `VerifyEmailAsync` | Verify a single email address (with detailed checks, address parsing, MX records) |
 | `CreateVerificationListAsync` | Create bulk verification list (up to 100k emails) |
 | `GetVerificationListAsync` | Get verification list status |
 | `ListVerificationListsAsync` | List all verification lists |
 | `GetVerificationResultsAsync` | Get verification results |
 | `ExportVerificationResultsAsync` | Export results as XLSX (returns download URL) |
+
+### Contacts
+| Method | Description |
+|--------|-------------|
+| `CreateContactAsync` | Create a new contact |
+| `GetContactAsync` | Get contact by ID or email |
+| `ListContactsAsync` | List all contacts (paginated) |
+| `UpdateContactAsync` | Update contact (including global unsubscribe) |
+| `DeleteContactAsync` | Delete a contact |
+
+### Events
+| Method | Description |
+|--------|-------------|
+| `ListEventsAsync` | List events with optional type filter and pagination |
+| `GetEventAsync` | Get event details by ID |
+
+### Webhooks
+| Method | Description |
+|--------|-------------|
+| `CreateWebhookAsync` | Create a new webhook |
+| `GetWebhookAsync` | Get webhook details |
+| `ListWebhooksAsync` | List all webhooks (paginated) |
+| `UpdateWebhookAsync` | Update webhook settings |
+| `DeleteWebhookAsync` | Delete a webhook |
 
 ### Utilities
 | Method | Description |

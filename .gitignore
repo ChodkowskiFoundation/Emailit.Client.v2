@@ -30,3 +30,6 @@ TestResults/
 coverage/
 /nul
 /.claude
+
+## Implementation plans
+stage-*.txt

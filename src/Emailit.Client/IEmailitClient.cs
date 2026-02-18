@@ -7,6 +7,9 @@ using Emailit.Client.Models.Subscribers;
 using Emailit.Client.Models.Suppressions;
 using Emailit.Client.Models.Templates;
 using Emailit.Client.Models.Verification;
+using Emailit.Client.Models.Contacts;
+using Emailit.Client.Models.Events;
+using Emailit.Client.Models.Webhooks;
 
 namespace Emailit.Client;
 
@@ -57,8 +60,7 @@ public interface IEmailitClient : IDisposable
     /// </summary>
     /// <param name="emailId">Email ID.</param>
     /// <param name="ct">Cancellation token.</param>
-    /// <returns>True if successfully cancelled.</returns>
-    Task<bool> CancelEmailAsync(string emailId, CancellationToken ct = default);
+    Task<CancelEmailResponse> CancelEmailAsync(string emailId, CancellationToken ct = default);
 
     /// <summary>
     /// Lists emails with cursor-based pagination and optional filters.
@@ -70,10 +72,16 @@ public interface IEmailitClient : IDisposable
         CancellationToken ct = default);
 
     /// <summary>
-    /// Resends a failed email (creates a new email with a new ID).
+    /// Retries a failed email (creates a new email with a new ID).
     /// </summary>
-    /// <param name="emailId">Email ID to resend.</param>
+    /// <param name="emailId">Email ID to retry.</param>
     /// <param name="ct">Cancellation token.</param>
+    Task<RetryEmailResponse> RetryEmailAsync(string emailId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Resends a failed email. Use RetryEmailAsync instead.
+    /// </summary>
+    [Obsolete("Use RetryEmailAsync instead. This method will be removed in a future version.")]
     Task<EmailResponse> ResendEmailAsync(string emailId, CancellationToken ct = default);
 
     #endregion
@@ -183,9 +191,14 @@ public interface IEmailitClient : IDisposable
     Task<SubscriberResponse> GetSubscriberAsync(string audienceId, string subscriberId, CancellationToken ct = default);
 
     /// <summary>
-    /// Lists all subscribers in an audience with pagination.
+    /// Lists all subscribers in an audience with pagination and optional filters.
     /// </summary>
-    Task<PaginatedResponse<SubscriberResponse>> ListSubscribersAsync(string audienceId, int page = 1, int limit = 100, CancellationToken ct = default);
+    /// <param name="audienceId">Audience ID.</param>
+    /// <param name="page">Page number.</param>
+    /// <param name="limit">Items per page.</param>
+    /// <param name="subscribed">Filter by subscription status.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<PaginatedResponse<SubscriberResponse>> ListSubscribersAsync(string audienceId, int page = 1, int limit = 100, bool? subscribed = null, CancellationToken ct = default);
 
     /// <summary>
     /// Updates a subscriber's details.
@@ -212,9 +225,11 @@ public interface IEmailitClient : IDisposable
     Task<TemplateResponse> GetTemplateAsync(string templateId, CancellationToken ct = default);
 
     /// <summary>
-    /// Lists all templates with pagination.
+    /// Lists all templates with pagination and optional filters.
     /// </summary>
-    Task<PaginatedResponse<TemplateResponse>> ListTemplatesAsync(int page = 1, int limit = 100, CancellationToken ct = default);
+    /// <param name="request">Optional filters and pagination parameters.</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<TemplatePaginatedResponse> ListTemplatesAsync(ListTemplatesRequest? request = null, CancellationToken ct = default);
 
     /// <summary>
     /// Updates a template.
@@ -293,6 +308,78 @@ public interface IEmailitClient : IDisposable
     /// Exports verification results to XLSX (returns download URL).
     /// </summary>
     Task<string> ExportVerificationResultsAsync(string listId, CancellationToken ct = default);
+
+    #endregion
+
+    #region Events
+
+    /// <summary>
+    /// Lists events with optional filters and pagination.
+    /// </summary>
+    Task<PaginatedResponse<EventResponse>> ListEventsAsync(ListEventsRequest? request = null, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets event details by ID.
+    /// </summary>
+    Task<EventResponse> GetEventAsync(string eventId, CancellationToken ct = default);
+
+    #endregion
+
+    #region Contacts
+
+    /// <summary>
+    /// Creates a new contact.
+    /// </summary>
+    Task<ContactResponse> CreateContactAsync(CreateContactRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets contact details by ID or email address.
+    /// </summary>
+    Task<ContactResponse> GetContactAsync(string contactIdOrEmail, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lists all contacts with pagination.
+    /// </summary>
+    Task<PaginatedResponse<ContactResponse>> ListContactsAsync(int page = 1, int limit = 100, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates a contact by ID or email address.
+    /// </summary>
+    Task<ContactResponse> UpdateContactAsync(string contactIdOrEmail, UpdateContactRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a contact.
+    /// </summary>
+    Task<DeleteContactResponse> DeleteContactAsync(string contactId, CancellationToken ct = default);
+
+    #endregion
+
+    #region Webhooks
+
+    /// <summary>
+    /// Creates a new webhook.
+    /// </summary>
+    Task<WebhookResponse> CreateWebhookAsync(CreateWebhookRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets webhook details by ID.
+    /// </summary>
+    Task<WebhookResponse> GetWebhookAsync(string webhookId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Lists all webhooks with pagination.
+    /// </summary>
+    Task<PaginatedResponse<WebhookResponse>> ListWebhooksAsync(int page = 1, int limit = 100, CancellationToken ct = default);
+
+    /// <summary>
+    /// Updates a webhook.
+    /// </summary>
+    Task<WebhookResponse> UpdateWebhookAsync(string webhookId, UpdateWebhookRequest request, CancellationToken ct = default);
+
+    /// <summary>
+    /// Deletes a webhook.
+    /// </summary>
+    Task<DeleteWebhookResponse> DeleteWebhookAsync(string webhookId, CancellationToken ct = default);
 
     #endregion
 

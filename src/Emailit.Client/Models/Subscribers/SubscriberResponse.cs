@@ -38,10 +38,34 @@ public sealed record SubscriberResponse
     public string? LastName { get; init; }
 
     /// <summary>
-    /// Subscription status (subscribed, unsubscribed, bounced).
+    /// Audience ID this subscriber belongs to.
     /// </summary>
-    [JsonPropertyName("status")]
-    public string? Status { get; init; }
+    [JsonPropertyName("audience_id")]
+    public string? AudienceId { get; init; }
+
+    /// <summary>
+    /// Contact ID linked to this subscriber.
+    /// </summary>
+    [JsonPropertyName("contact_id")]
+    public string? ContactId { get; init; }
+
+    /// <summary>
+    /// Whether the subscriber is currently subscribed.
+    /// </summary>
+    [JsonPropertyName("subscribed")]
+    public bool? Subscribed { get; init; }
+
+    /// <summary>
+    /// When the subscriber subscribed.
+    /// </summary>
+    [JsonPropertyName("subscribed_at")]
+    public DateTime? SubscribedAt { get; init; }
+
+    /// <summary>
+    /// When the subscriber unsubscribed.
+    /// </summary>
+    [JsonPropertyName("unsubscribed_at")]
+    public DateTime? UnsubscribedAt { get; init; }
 
     /// <summary>
     /// Custom fields for the subscriber.

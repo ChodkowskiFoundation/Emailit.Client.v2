@@ -41,13 +41,14 @@ public sealed class SendEmailRequest
     public IReadOnlyList<string>? ReplyTo { get; init; }
 
     /// <summary>
-    /// Email subject line.
+    /// Email subject line. Required unless a template provides it.
     /// </summary>
     [JsonPropertyName("subject")]
-    public required string Subject { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Subject { get; init; }
 
     /// <summary>
-    /// HTML body content. Required if template_id is not provided.
+    /// HTML body content. Required if template is not provided.
     /// </summary>
     [JsonPropertyName("html")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -61,14 +62,14 @@ public sealed class SendEmailRequest
     public string? Text { get; init; }
 
     /// <summary>
-    /// Template ID to use for the email body.
+    /// Template alias or ID (tem_xxx) to use for the email body.
     /// </summary>
     [JsonPropertyName("template")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string? TemplateId { get; init; }
 
     /// <summary>
-    /// Variables for template substitution.
+    /// Variables for template substitution using {{variable}} syntax.
     /// </summary>
     [JsonPropertyName("variables")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -82,6 +83,20 @@ public sealed class SendEmailRequest
     public IReadOnlyList<EmailAttachment>? Attachments { get; init; }
 
     /// <summary>
+    /// Custom email headers as key-value pairs.
+    /// </summary>
+    [JsonPropertyName("headers")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? Headers { get; init; }
+
+    /// <summary>
+    /// Metadata as key-value string pairs.
+    /// </summary>
+    [JsonPropertyName("meta")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public Dictionary<string, string>? Meta { get; init; }
+
+    /// <summary>
     /// Scheduled send time (ISO 8601, Unix timestamp, or natural language).
     /// </summary>
     [JsonPropertyName("scheduled_at")]
@@ -89,23 +104,9 @@ public sealed class SendEmailRequest
     public string? ScheduledAt { get; init; }
 
     /// <summary>
-    /// Enable open tracking.
+    /// Tracking configuration with loads and clicks options.
     /// </summary>
-    [JsonPropertyName("track_opens")]
+    [JsonPropertyName("tracking")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public bool? TrackOpens { get; init; }
-
-    /// <summary>
-    /// Enable click tracking.
-    /// </summary>
-    [JsonPropertyName("track_clicks")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public bool? TrackClicks { get; init; }
-
-    /// <summary>
-    /// Custom metadata key-value pairs.
-    /// </summary>
-    [JsonPropertyName("metadata")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public Dictionary<string, string>? Metadata { get; init; }
+    public EmailTrackingOptions? Tracking { get; init; }
 }

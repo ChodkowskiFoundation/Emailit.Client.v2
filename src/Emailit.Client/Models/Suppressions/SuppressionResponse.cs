@@ -38,6 +38,18 @@ public sealed record SuppressionResponse
     public string? Reason { get; init; }
 
     /// <summary>
+    /// When the suppression event occurred.
+    /// </summary>
+    [JsonPropertyName("timestamp")]
+    public DateTime? Timestamp { get; init; }
+
+    /// <summary>
+    /// Expiration datetime (ISO 8601). Null for permanent suppression.
+    /// </summary>
+    [JsonPropertyName("keep_until")]
+    public string? KeepUntil { get; init; }
+
+    /// <summary>
     /// Creation timestamp.
     /// </summary>
     [JsonPropertyName("created_at")]

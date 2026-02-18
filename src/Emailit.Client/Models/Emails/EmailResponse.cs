@@ -20,7 +20,25 @@ public sealed record EmailResponse
     public string Id { get; init; } = null!;
 
     /// <summary>
-    /// Current email status, one of following values: "pending", "scheduled", "sent", "delivered", "bounced", "canceled".
+    /// Map of recipient email to their individual email IDs (for multi-recipient sends).
+    /// </summary>
+    [JsonPropertyName("ids")]
+    public Dictionary<string, string>? Ids { get; init; }
+
+    /// <summary>
+    /// Email token.
+    /// </summary>
+    [JsonPropertyName("token")]
+    public string? Token { get; init; }
+
+    /// <summary>
+    /// Message-ID header value.
+    /// </summary>
+    [JsonPropertyName("message_id")]
+    public string? MessageId { get; init; }
+
+    /// <summary>
+    /// Current email status.
     /// </summary>
     [JsonPropertyName("status")]
     public string Status { get; init; } = null!;
@@ -42,6 +60,36 @@ public sealed record EmailResponse
     /// </summary>
     [JsonPropertyName("subject")]
     public string? Subject { get; init; }
+
+    /// <summary>
+    /// Email size in bytes.
+    /// </summary>
+    [JsonPropertyName("size")]
+    public int? Size { get; init; }
+
+    /// <summary>
+    /// Tracking configuration.
+    /// </summary>
+    [JsonPropertyName("tracking")]
+    public EmailTrackingOptions? Tracking { get; init; }
+
+    /// <summary>
+    /// Custom email headers.
+    /// </summary>
+    [JsonPropertyName("headers")]
+    public Dictionary<string, string>? Headers { get; init; }
+
+    /// <summary>
+    /// Metadata key-value pairs.
+    /// </summary>
+    [JsonPropertyName("meta")]
+    public Dictionary<string, string>? Meta { get; init; }
+
+    /// <summary>
+    /// Email content.
+    /// </summary>
+    [JsonPropertyName("content")]
+    public string? Content { get; init; }
 
     /// <summary>
     /// Creation timestamp.
@@ -86,10 +134,10 @@ public sealed record EmailResponse
     public DateTime? ScheduledAt { get; init; }
 
     /// <summary>
-    /// Custom metadata.
+    /// Status message from API.
     /// </summary>
-    [JsonPropertyName("metadata")]
-    public Dictionary<string, string>? Metadata { get; init; }
+    [JsonPropertyName("message")]
+    public string? Message { get; init; }
 
     /// <summary>
     /// Last update timestamp.

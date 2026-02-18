@@ -3,19 +3,13 @@ using System.Text.Json.Serialization;
 namespace Emailit.Client.Models.Templates;
 
 /// <summary>
-/// Response for template deletion.
+/// Internal wrapper for template API responses that wrap data in {data: {...}, message: "..."}.
 /// </summary>
-public sealed record DeleteTemplateResponse
+internal sealed record TemplateDataResponse
 {
-    /// <summary>
-    /// Data payload (null on successful deletion).
-    /// </summary>
     [JsonPropertyName("data")]
     public TemplateResponse? Data { get; init; }
 
-    /// <summary>
-    /// Status message from API.
-    /// </summary>
     [JsonPropertyName("message")]
     public string? Message { get; init; }
 }

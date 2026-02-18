@@ -26,56 +26,56 @@ public sealed record EmailVerificationResponse
     public string Email { get; init; } = null!;
 
     /// <summary>
-    /// Verification result: "valid", "invalid", "risky", "unknown".
+    /// Verification status (completed, pending, etc.).
+    /// </summary>
+    [JsonPropertyName("status")]
+    public string? Status { get; init; }
+
+    /// <summary>
+    /// Verification result: "safe", "invalid", "risky", "unknown".
     /// </summary>
     [JsonPropertyName("result")]
     public string Result { get; init; } = null!;
 
     /// <summary>
-    /// Risk score (0-100, where 0 is safest).
+    /// Verification score (0-100).
     /// </summary>
-    [JsonPropertyName("risk_score")]
-    public int? RiskScore { get; init; }
+    [JsonPropertyName("score")]
+    public int? Score { get; init; }
 
     /// <summary>
-    /// Whether the email is deliverable.
+    /// Risk level: "low", "medium", "high".
     /// </summary>
-    [JsonPropertyName("is_deliverable")]
-    public bool? IsDeliverable { get; init; }
+    [JsonPropertyName("risk")]
+    public string? Risk { get; init; }
 
     /// <summary>
-    /// Whether the domain is disposable.
+    /// Verification mode used.
     /// </summary>
-    [JsonPropertyName("is_disposable")]
-    public bool? IsDisposable { get; init; }
+    [JsonPropertyName("mode")]
+    public string? Mode { get; init; }
 
     /// <summary>
-    /// Whether the email is a role account (e.g., info@, support@).
+    /// Detailed verification check results.
     /// </summary>
-    [JsonPropertyName("is_role_account")]
-    public bool? IsRoleAccount { get; init; }
+    [JsonPropertyName("checks")]
+    public VerificationChecks? Checks { get; init; }
 
     /// <summary>
-    /// Whether the email is a free provider (e.g., gmail.com).
+    /// Parsed email address components.
     /// </summary>
-    [JsonPropertyName("is_free_provider")]
-    public bool? IsFreeProvider { get; init; }
+    [JsonPropertyName("address")]
+    public VerificationAddress? Address { get; init; }
 
     /// <summary>
-    /// Whether MX records exist for the domain.
+    /// Suggested email correction (e.g., for typos).
     /// </summary>
-    [JsonPropertyName("has_mx_records")]
-    public bool? HasMxRecords { get; init; }
+    [JsonPropertyName("did_you_mean")]
+    public string? DidYouMean { get; init; }
 
     /// <summary>
-    /// SMTP provider name.
+    /// MX records for the domain.
     /// </summary>
-    [JsonPropertyName("smtp_provider")]
-    public string? SmtpProvider { get; init; }
-
-    /// <summary>
-    /// Verification timestamp.
-    /// </summary>
-    [JsonPropertyName("verified_at")]
-    public DateTime? VerifiedAt { get; init; }
+    [JsonPropertyName("mx_records")]
+    public List<MxRecordInfo>? MxRecords { get; init; }
 }
