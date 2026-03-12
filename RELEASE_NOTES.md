@@ -1,3 +1,41 @@
+# Release Notes — v2.1.0
+
+## New Endpoints
+
+### Email Sub-Resources
+- `GetEmailMetaAsync` — GET /emails/{id}/meta — Email metadata without body content (includes attachment info, headers, tracking, meta)
+- `GetEmailBodyAsync` — GET /emails/{id}/body — Parsed text and HTML body only
+- `GetEmailRawAsync` — GET /emails/{id}/raw — Full raw MIME message with metadata
+- `GetEmailAttachmentsAsync` — GET /emails/{id}/attachments — Attachment list with base64-encoded content
+
+## New Features
+
+### Webhook Signature Verification
+- `WebhookSignatureValidator.ValidateSignature()` — HMAC-SHA256 signature verification with timing-safe comparison
+- `WebhookSignatureValidator.ValidateSignature(..., clockTolerance)` — Signature verification with replay attack protection
+- `WebhookSignatureValidator.ComputeSignature()` — Compute expected signature for debugging
+- `WebhookHeaders` constants — `X-Emailit-Signature` and `X-Emailit-Timestamp` header names
+
+### Email Status Constants
+- `EmailStatus` static class with all 12 API v2 statuses: `Accepted`, `Scheduled`, `Delivered`, `Bounced`, `Attempted`, `Failed`, `Rejected`, `Loaded`, `Clicked`, `Suppressed`, `Received`, `Complained`
+
+### Email Type Constants
+- `EmailType` static class: `Inbound`, `Outbound`
+
+## Updated Models
+- `EmailResponse` — added `Type` field (inbound/outbound)
+- `ListEmailsRequest` — added `Type` filter for inbound/outbound emails
+- `TemplateResponse` — added `TotalVersions` field
+
+## New Models
+- `EmailMetaResponse` — metadata response for /emails/{id}/meta
+- `EmailBodyResponse` — body response for /emails/{id}/body
+- `EmailRawResponse` — raw MIME response for /emails/{id}/raw
+- `EmailAttachmentsResponse` — attachments response for /emails/{id}/attachments
+- `EmailAttachmentInfo` — lightweight attachment metadata (without content payload)
+
+---
+
 # Release Notes — v2.0.1
 
 ## New Endpoints

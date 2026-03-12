@@ -276,6 +276,28 @@ public sealed class TemplateTests : IDisposable
     }
 
     [Fact]
+    public async Task GetTemplateAsync_DeserializesTotalVersions()
+    {
+        // Arrange
+        _httpTest.RespondWithJson(new
+        {
+            data = new
+            {
+                id = "tpl_abc123",
+                name = "Versioned Template",
+                total_versions = 5,
+                created_at = DateTime.UtcNow
+            }
+        });
+
+        // Act
+        var result = await _client.GetTemplateAsync("tpl_abc123");
+
+        // Assert
+        result.TotalVersions.Should().Be(5);
+    }
+
+    [Fact]
     public async Task CreateTemplateAsync_ValidationError_ThrowsValidationException()
     {
         // Arrange

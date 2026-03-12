@@ -16,7 +16,7 @@ public sealed class ListEmailsRequest
     public string? After { get; init; }
 
     /// <summary>
-    /// Filter by email status (sent, delivered, opened, clicked, bounced, complained).
+    /// Filter by email status. Use <see cref="EmailStatus"/> constants.
     /// </summary>
     public string? Status { get; init; }
 
@@ -49,4 +49,9 @@ public sealed class ListEmailsRequest
     /// Filter by creation date (ISO 8601). Returns emails created before this date.
     /// </summary>
     public string? CreatedBefore { get; init; }
+
+    /// <summary>
+    /// Filter by email type. Use <see cref="EmailType"/> constants.
+    /// </summary>
+    public string? Type { get; init; }
 }
