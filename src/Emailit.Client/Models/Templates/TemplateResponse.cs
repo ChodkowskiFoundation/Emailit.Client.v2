@@ -80,6 +80,12 @@ public sealed record TemplateResponse
     public string? PreviewUrl { get; init; }
 
     /// <summary>
+    /// Total number of versions for this template.
+    /// </summary>
+    [JsonPropertyName("total_versions")]
+    public int? TotalVersions { get; init; }
+
+    /// <summary>
     /// Template version history.
     /// </summary>
     [JsonPropertyName("versions")]

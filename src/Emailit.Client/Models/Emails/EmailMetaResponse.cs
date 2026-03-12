@@ -3,9 +3,9 @@ using System.Text.Json.Serialization;
 namespace Emailit.Client.Models.Emails;
 
 /// <summary>
-/// Response model for email operations.
+/// Response model for email metadata (without body content).
 /// </summary>
-public sealed record EmailResponse
+public sealed record EmailMetaResponse
 {
     /// <summary>
     /// Object type identifier.
@@ -20,16 +20,10 @@ public sealed record EmailResponse
     public string Id { get; init; } = null!;
 
     /// <summary>
-    /// Email type: "inbound" or "outbound". Use <see cref="EmailType"/> constants.
+    /// Email type: "inbound" or "outbound".
     /// </summary>
     [JsonPropertyName("type")]
     public string? Type { get; init; }
-
-    /// <summary>
-    /// Map of recipient email to their individual email IDs (for multi-recipient sends).
-    /// </summary>
-    [JsonPropertyName("ids")]
-    public Dictionary<string, string>? Ids { get; init; }
 
     /// <summary>
     /// Email token.
@@ -42,12 +36,6 @@ public sealed record EmailResponse
     /// </summary>
     [JsonPropertyName("message_id")]
     public string? MessageId { get; init; }
-
-    /// <summary>
-    /// Current email status.
-    /// </summary>
-    [JsonPropertyName("status")]
-    public string Status { get; init; } = null!;
 
     /// <summary>
     /// Sender email address.
@@ -66,6 +54,12 @@ public sealed record EmailResponse
     /// </summary>
     [JsonPropertyName("subject")]
     public string? Subject { get; init; }
+
+    /// <summary>
+    /// Current email status.
+    /// </summary>
+    [JsonPropertyName("status")]
+    public string Status { get; init; } = null!;
 
     /// <summary>
     /// Email size in bytes.
@@ -92,16 +86,28 @@ public sealed record EmailResponse
     public Dictionary<string, string>? Meta { get; init; }
 
     /// <summary>
-    /// Email content.
+    /// Attachment metadata (without content).
     /// </summary>
-    [JsonPropertyName("content")]
-    public string? Content { get; init; }
+    [JsonPropertyName("attachments")]
+    public List<EmailAttachmentInfo>? Attachments { get; init; }
+
+    /// <summary>
+    /// Scheduled send time.
+    /// </summary>
+    [JsonPropertyName("scheduled_at")]
+    public DateTime? ScheduledAt { get; init; }
 
     /// <summary>
     /// Creation timestamp.
     /// </summary>
     [JsonPropertyName("created_at")]
     public DateTime CreatedAt { get; init; }
+
+    /// <summary>
+    /// Last update timestamp.
+    /// </summary>
+    [JsonPropertyName("updated_at")]
+    public DateTime? UpdatedAt { get; init; }
 
     /// <summary>
     /// Timestamp when the email was sent.
@@ -132,28 +138,4 @@ public sealed record EmailResponse
     /// </summary>
     [JsonPropertyName("bounce_reason")]
     public string? BounceReason { get; init; }
-
-    /// <summary>
-    /// Scheduled send time.
-    /// </summary>
-    [JsonPropertyName("scheduled_at")]
-    public DateTime? ScheduledAt { get; init; }
-
-    /// <summary>
-    /// Status message from API.
-    /// </summary>
-    [JsonPropertyName("message")]
-    public string? Message { get; init; }
-
-    /// <summary>
-    /// Last update timestamp.
-    /// </summary>
-    [JsonPropertyName("updated_at")]
-    public DateTime? UpdatedAt { get; init; }
-
-    /// <summary>
-    /// Rate limit information from response headers (not from JSON).
-    /// </summary>
-    [JsonIgnore]
-    public RateLimitInfo? RateLimitInfo { get; init; }
 }

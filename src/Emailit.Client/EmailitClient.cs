@@ -124,6 +124,8 @@ public sealed class EmailitClient : IEmailitClient
                 req.SetQueryParam("created_after", request.CreatedAfter);
             if (!string.IsNullOrEmpty(request.CreatedBefore))
                 req.SetQueryParam("created_before", request.CreatedBefore);
+            if (!string.IsNullOrEmpty(request.Type))
+                req.SetQueryParam("type", request.Type);
         }
 
         return ExecuteAsync<CursorPaginatedResponse<EmailResponse>>(
@@ -139,6 +141,26 @@ public sealed class EmailitClient : IEmailitClient
     public Task<EmailResponse> ResendEmailAsync(string emailId, CancellationToken ct = default) =>
         ExecuteAsync<EmailResponse>(
             () => _client.Request("/v2/emails", emailId, "resend").PostAsync(cancellationToken: ct),
+            ct);
+
+    public Task<EmailMetaResponse> GetEmailMetaAsync(string emailId, CancellationToken ct = default) =>
+        ExecuteAsync<EmailMetaResponse>(
+            () => _client.Request("/v2/emails", emailId, "meta").GetAsync(cancellationToken: ct),
+            ct);
+
+    public Task<EmailBodyResponse> GetEmailBodyAsync(string emailId, CancellationToken ct = default) =>
+        ExecuteAsync<EmailBodyResponse>(
+            () => _client.Request("/v2/emails", emailId, "body").GetAsync(cancellationToken: ct),
+            ct);
+
+    public Task<EmailRawResponse> GetEmailRawAsync(string emailId, CancellationToken ct = default) =>
+        ExecuteAsync<EmailRawResponse>(
+            () => _client.Request("/v2/emails", emailId, "raw").GetAsync(cancellationToken: ct),
+            ct);
+
+    public Task<EmailAttachmentsResponse> GetEmailAttachmentsAsync(string emailId, CancellationToken ct = default) =>
+        ExecuteAsync<EmailAttachmentsResponse>(
+            () => _client.Request("/v2/emails", emailId, "attachments").GetAsync(cancellationToken: ct),
             ct);
 
     #endregion

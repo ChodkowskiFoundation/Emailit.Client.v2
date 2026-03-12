@@ -84,6 +84,34 @@ public interface IEmailitClient : IDisposable
     [Obsolete("Use RetryEmailAsync instead. This method will be removed in a future version.")]
     Task<EmailResponse> ResendEmailAsync(string emailId, CancellationToken ct = default);
 
+    /// <summary>
+    /// Gets email metadata without body content.
+    /// </summary>
+    /// <param name="emailId">Email ID (prefixed with em_).</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<EmailMetaResponse> GetEmailMetaAsync(string emailId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the parsed text and HTML body of an email.
+    /// </summary>
+    /// <param name="emailId">Email ID (prefixed with em_).</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<EmailBodyResponse> GetEmailBodyAsync(string emailId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets the full raw MIME message of an email.
+    /// </summary>
+    /// <param name="emailId">Email ID (prefixed with em_).</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<EmailRawResponse> GetEmailRawAsync(string emailId, CancellationToken ct = default);
+
+    /// <summary>
+    /// Gets email attachments with base64-encoded content.
+    /// </summary>
+    /// <param name="emailId">Email ID (prefixed with em_).</param>
+    /// <param name="ct">Cancellation token.</param>
+    Task<EmailAttachmentsResponse> GetEmailAttachmentsAsync(string emailId, CancellationToken ct = default);
+
     #endregion
 
     #region Domains

@@ -11,7 +11,7 @@
 
     <!-- NuGet Package Properties -->
     <PackageId>Emailit.Client.v2</PackageId>
-    <Version>2.0.1</Version>
+    <Version>2.1.0</Version>
     <Authors>Konstanty Chodkowski</Authors>
     <Company>Konstanty Chodkowski Foundation</Company>
     <Copyright>Copyright (c) 2025 MassMailer</Copyright>
@@ -22,6 +22,25 @@
     <RepositoryUrl>https://github.com/ChodkowskiFoundation/Emailit.Client.v2</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>
+v2.1.0 — Email sub-resources, webhook signatures, status rework
+
+New endpoints:
+- GetEmailMetaAsync — GET /emails/{id}/meta (metadata without body)
+- GetEmailBodyAsync — GET /emails/{id}/body (parsed text/HTML only)
+- GetEmailRawAsync — GET /emails/{id}/raw (full MIME message)
+- GetEmailAttachmentsAsync — GET /emails/{id}/attachments (base64 content)
+
+New features:
+- WebhookSignatureValidator — HMAC-SHA256 webhook signature verification with timing-safe comparison and replay attack protection
+- EmailStatus constants — all 12 email statuses after the API status rework (accepted, scheduled, delivered, bounced, attempted, failed, rejected, loaded, clicked, suppressed, received, complained)
+- EmailType constants — inbound/outbound email type support
+
+Updated models:
+- EmailResponse: added Type field (inbound/outbound)
+- ListEmailsRequest: added Type filter
+- TemplateResponse: added TotalVersions field
+    </PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>

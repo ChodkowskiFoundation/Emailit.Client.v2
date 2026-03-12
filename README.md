@@ -244,7 +244,8 @@ var response = await _emailit.SendEmailAsync(
 var emails = await _emailit.ListEmailsAsync(new ListEmailsRequest
 {
     Limit = 50,
-    Status = "delivered",
+    Status = EmailStatus.Delivered,
+    Type = EmailType.Outbound, // Filter by inbound/outbound
     From = "sender@yourdomain.com",
     CreatedAfter = "2026-01-01T00:00:00Z"
 });
@@ -269,11 +270,37 @@ if (emails.HasMore)
 ```csharp
 var email = await _emailit.GetEmailAsync("em_abc123");
 
-if (email.Status == "bounced")
+if (email.Status == EmailStatus.Bounced)
 {
     var retried = await _emailit.RetryEmailAsync(email.Id);
     Console.WriteLine($"Retried as: {retried.Id}, Status: {retried.Status}");
 }
+```
+
+### Email Sub-Resources
+
+Retrieve specific parts of an email without loading the full object:
+
+```csharp
+// Metadata only (no body content) — lightweight
+var meta = await _emailit.GetEmailMetaAsync("em_abc123");
+Console.WriteLine($"Subject: {meta.Subject}, Size: {meta.Size} bytes");
+Console.WriteLine($"Type: {meta.Type}"); // "inbound" or "outbound"
+foreach (var att in meta.Attachments ?? [])
+    Console.WriteLine($"  Attachment: {att.Filename} ({att.Size} bytes)");
+
+// Body only (text + HTML)
+var body = await _emailit.GetEmailBodyAsync("em_abc123");
+Console.WriteLine($"HTML: {body.Html?.Length ?? 0} chars, Text: {body.Text?.Length ?? 0} chars");
+
+// Full raw MIME message
+var raw = await _emailit.GetEmailRawAsync("em_abc123");
+Console.WriteLine($"Raw MIME ({raw.Size} bytes): {raw.Raw[..100]}...");
+
+// Attachments with base64 content
+var attachments = await _emailit.GetEmailAttachmentsAsync("em_abc123");
+foreach (var att in attachments.Attachments)
+    Console.WriteLine($"  {att.Filename}: {att.Content?.Length ?? 0} base64 chars");
 ```
 
 ### Verify Email Address
@@ -516,6 +543,31 @@ await _emailit.UpdateWebhookAsync(webhook.Id, new UpdateWebhookRequest
 var webhooks = await _emailit.ListWebhooksAsync();
 ```
 
+### Verify Webhook Signatures
+
+Emailit signs every webhook request with HMAC-SHA256. Use `WebhookSignatureValidator` to verify authenticity:
+
+```csharp
+using Emailit.Client.Webhooks;
+
+app.MapPost("/webhooks/emailit", async (HttpContext ctx) =>
+{
+    var body = await new StreamReader(ctx.Request.Body).ReadToEndAsync();
+    var signature = ctx.Request.Headers[WebhookHeaders.Signature].ToString();
+    var timestamp = ctx.Request.Headers[WebhookHeaders.Timestamp].ToString();
+
+    if (!WebhookSignatureValidator.ValidateSignature(
+        body, signature, timestamp, webhookSecret,
+        clockTolerance: TimeSpan.FromMinutes(5)))
+    {
+        return Results.Unauthorized();
+    }
+
+    // Process webhook payload...
+    return Results.Ok();
+});
+```
+
 ### Manage API Keys
 
 ```csharp
@@ -630,6 +682,10 @@ if (rateLimitInfo != null)
 | `UpdateScheduledEmailAsync` | Update scheduled email's send time |
 | `CancelEmailAsync` | Cancel a scheduled email |
 | `RetryEmailAsync` | Retry a failed email (creates a new email with a new ID) |
+| `GetEmailMetaAsync` | Get email metadata without body content |
+| `GetEmailBodyAsync` | Get parsed text and HTML body only |
+| `GetEmailRawAsync` | Get full raw MIME message |
+| `GetEmailAttachmentsAsync` | Get attachments with base64-encoded content |
 
 ### Domains
 | Method | Description |
@@ -720,6 +776,13 @@ if (rateLimitInfo != null)
 | `ListWebhooksAsync` | List all webhooks (paginated) |
 | `UpdateWebhookAsync` | Update webhook settings |
 | `DeleteWebhookAsync` | Delete a webhook |
+
+### Webhook Signature Verification
+| Method | Description |
+|--------|-------------|
+| `WebhookSignatureValidator.ValidateSignature` | Verify HMAC-SHA256 webhook signature (timing-safe) |
+| `WebhookSignatureValidator.ValidateSignature` (with tolerance) | Verify signature with replay attack protection |
+| `WebhookSignatureValidator.ComputeSignature` | Compute expected signature for debugging |
 
 ### Utilities
 | Method | Description |
