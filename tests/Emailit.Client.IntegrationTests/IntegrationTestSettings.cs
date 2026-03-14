@@ -7,6 +7,7 @@ internal sealed class IntegrationTestSettings
     public required string RecipientEmail { get; init; }
     public required string BaseUrl { get; init; }
     public required int TimeoutSeconds { get; init; }
+    public required bool EnableUnstableEndpoints { get; init; }
 
     public static IntegrationTestSettings Load() => new()
     {
@@ -14,7 +15,8 @@ internal sealed class IntegrationTestSettings
         SendingDomain = GetOptional("EMAILIT_INTEGRATION_DOMAIN", "chodkowski.org"),
         RecipientEmail = GetOptional("EMAILIT_INTEGRATION_TO_EMAIL", "chodkowskikonstanty@gmail.com"),
         BaseUrl = GetOptional("EMAILIT_INTEGRATION_BASE_URL", "https://api.emailit.com"),
-        TimeoutSeconds = GetOptionalInt("EMAILIT_INTEGRATION_TIMEOUT_SECONDS", 60)
+        TimeoutSeconds = GetOptionalInt("EMAILIT_INTEGRATION_TIMEOUT_SECONDS", 60),
+        EnableUnstableEndpoints = GetOptionalBool("EMAILIT_INTEGRATION_ENABLE_UNSTABLE", false)
     };
 
     private static string GetRequired(string name)
@@ -40,5 +42,11 @@ internal sealed class IntegrationTestSettings
     {
         var value = Environment.GetEnvironmentVariable(name);
         return int.TryParse(value, out var parsed) && parsed > 0 ? parsed : fallback;
+    }
+
+    private static bool GetOptionalBool(string name, bool fallback)
+    {
+        var value = Environment.GetEnvironmentVariable(name);
+        return bool.TryParse(value, out var parsed) ? parsed : fallback;
     }
 }

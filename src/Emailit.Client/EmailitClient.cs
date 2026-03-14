@@ -45,7 +45,8 @@ public sealed class EmailitClient : IEmailitClient
             new FlexibleBooleanConverter(),
             new FlexibleNullableBooleanConverter(),
             new FlexibleDateTimeConverter(),
-            new FlexibleNullableDateTimeConverter()
+            new FlexibleNullableDateTimeConverter(),
+            new FlexibleStringListConverter()
         }
     };
 
