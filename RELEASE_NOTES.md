@@ -1,12 +1,20 @@
-# Release Notes - Unreleased
+# Release Notes - v2.1.2
 
 ## Exception Handling Overhaul
 
 - added richer exception context with request method, sanitized request URI, request ID, transient/retry metadata, rate limits, and optional diagnostic payload capture
 - added `EmailitProblemDetails` conversion so consumers can return standardized RFC 7807-style responses without introducing a logger dependency
 - added dedicated exception types for authorization, conflicts, transport failures, timeouts, deserialization failures, unexpected response shapes, and server-side failures
+- added a dedicated `EmailitUnprocessableEntityException` for `422` API responses
 - `TestConnectionAsync` now throws typed exceptions instead of silently returning `null`
 - added client options to control sensitive diagnostic capture: `ExceptionDetailMode` and `MaxDiagnosticBodyLength`
+
+## Integration Coverage Hardening
+
+- split unstable retry and resend verification into separate production scenarios
+- aligned retry candidate selection with the statuses the production API actually accepts
+- made webhook verification rely on direct resource reads instead of immediate list consistency
+- downgraded known unstable backend behaviors to observations in the unstable integration harness so they no longer appear as client regressions
 
 ---
 

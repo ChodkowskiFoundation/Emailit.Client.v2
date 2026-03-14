@@ -4,7 +4,7 @@ A .NET client library for the [Emailit API v2](https://emailit.com/docs/api-refe
 
 The client covers emails, domains, API keys, audiences, subscribers, templates, suppressions, email verification, contacts, events, and webhooks.
 
-Current package version prepared in this repository: `2.1.1`.
+Current package version prepared in this repository: `2.1.2`.
 
 ## Overview
 

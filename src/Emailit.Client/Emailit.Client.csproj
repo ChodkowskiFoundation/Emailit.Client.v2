@@ -11,7 +11,7 @@
 
     <!-- NuGet Package Properties -->
     <PackageId>Emailit.Client.v2</PackageId>
-    <Version>2.1.1</Version>
+    <Version>2.1.2</Version>
     <Authors>Konstanty Chodkowski</Authors>
     <Company>Konstanty Chodkowski Foundation</Company>
     <Copyright>Copyright (c) 2025 MassMailer</Copyright>
@@ -23,18 +23,17 @@
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>
-v2.1.1 - Production compatibility hardening and integration coverage
+v2.1.2 - Exception handling overhaul and production integration hardening
 
-Compatibility fixes:
-- tolerant parsing for booleans, numeric strings, mixed DateTime formats, and string-or-array recipients
-- GetEmailAttachmentsAsync now handles production responses that return attachment payloads under data
-- ResendEmailAsync now falls back to RetryEmailAsync when the legacy resend route is unavailable
-- UpdateDomainAsync now uses the production-compatible POST route
-- TestConnectionAsync now preserves cancellation and updates LastRateLimitInfo
+Error handling:
+- richer exception context with request method, sanitized request URI, request ID, rate limits, transient flags, and optional diagnostic response capture
+- ProblemDetails conversion for Emailit exceptions
+- dedicated exception types for authorization, conflicts, transport failures, timeouts, deserialization failures, unexpected response shapes, server failures, and unprocessable requests
+- TestConnectionAsync now throws typed exceptions instead of silently returning null
 
 Quality:
-- added production integration tests
-- split stable and unstable integration coverage so server-side inconsistencies do not block core client validation
+- updated README to focus on consumer usage and operational guidance
+- hardened unstable production integration scenarios around webhooks, retry/resend candidate selection, and verification list instability
     </PackageReleaseNotes>
   </PropertyGroup>
 
