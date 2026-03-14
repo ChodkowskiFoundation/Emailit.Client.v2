@@ -12,8 +12,8 @@ internal sealed class IntegrationTestSettings
     public static IntegrationTestSettings Load() => new()
     {
         ApiKey = GetRequired("EMAILIT_INTEGRATION_API_KEY"),
-        SendingDomain = GetOptional("EMAILIT_INTEGRATION_DOMAIN", "chodkowski.org"),
-        RecipientEmail = GetOptional("EMAILIT_INTEGRATION_TO_EMAIL", "chodkowskikonstanty@gmail.com"),
+        SendingDomain = GetRequired("EMAILIT_INTEGRATION_DOMAIN"),
+        RecipientEmail = GetRequired("EMAILIT_INTEGRATION_TO_EMAIL"),
         BaseUrl = GetOptional("EMAILIT_INTEGRATION_BASE_URL", "https://api.emailit.com"),
         TimeoutSeconds = GetOptionalInt("EMAILIT_INTEGRATION_TIMEOUT_SECONDS", 60),
         EnableUnstableEndpoints = GetOptionalBool("EMAILIT_INTEGRATION_ENABLE_UNSTABLE", false)
@@ -29,7 +29,7 @@ internal sealed class IntegrationTestSettings
 
         throw new InvalidOperationException(
             $"Missing required environment variable '{name}'. " +
-            "Set EMAILIT_INTEGRATION_API_KEY before running production integration tests.");
+            "Set EMAILIT_INTEGRATION_API_KEY, EMAILIT_INTEGRATION_DOMAIN, and EMAILIT_INTEGRATION_TO_EMAIL before running production integration tests.");
     }
 
     private static string GetOptional(string name, string fallback)

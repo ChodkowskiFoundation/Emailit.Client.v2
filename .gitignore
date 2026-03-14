@@ -12,6 +12,8 @@ obj/
 project.lock.json
 project.fragment.lock.json
 artifacts/
+nupkg/
+.nuget_packages/
 
 ## Visual Studio
 .vs/
@@ -28,6 +30,8 @@ Thumbs.db
 ## Test results
 TestResults/
 coverage/
+.dotnet/
+.dotnet_home/
 /nul
 /.claude
 

@@ -11,7 +11,7 @@
 
     <!-- NuGet Package Properties -->
     <PackageId>Emailit.Client.v2</PackageId>
-    <Version>2.1.0</Version>
+    <Version>2.1.1</Version>
     <Authors>Konstanty Chodkowski</Authors>
     <Company>Konstanty Chodkowski Foundation</Company>
     <Copyright>Copyright (c) 2025 MassMailer</Copyright>
@@ -23,23 +23,18 @@
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>
-v2.1.0 - Email sub-resources, webhook signatures, status rework
+v2.1.1 - Production compatibility hardening and integration coverage
 
-New endpoints:
-- GetEmailMetaAsync - GET /emails/{id}/meta (metadata without body)
-- GetEmailBodyAsync - GET /emails/{id}/body (parsed text/HTML only)
-- GetEmailRawAsync - GET /emails/{id}/raw (full MIME message)
-- GetEmailAttachmentsAsync - GET /emails/{id}/attachments (base64 content)
+Compatibility fixes:
+- tolerant parsing for booleans, numeric strings, mixed DateTime formats, and string-or-array recipients
+- GetEmailAttachmentsAsync now handles production responses that return attachment payloads under data
+- ResendEmailAsync now falls back to RetryEmailAsync when the legacy resend route is unavailable
+- UpdateDomainAsync now uses the production-compatible POST route
+- TestConnectionAsync now preserves cancellation and updates LastRateLimitInfo
 
-New features:
-- WebhookSignatureValidator - HMAC-SHA256 webhook signature verification with timing-safe comparison and replay attack protection
-- EmailStatus constants - all 12 email statuses after the API status rework (accepted, scheduled, delivered, bounced, attempted, failed, rejected, loaded, clicked, suppressed, received, complained)
-- EmailType constants - inbound/outbound email type support
-
-Updated models:
-- EmailResponse: added Type field (inbound/outbound)
-- ListEmailsRequest: added Type filter
-- TemplateResponse: added TotalVersions field
+Quality:
+- added production integration tests
+- split stable and unstable integration coverage so server-side inconsistencies do not block core client validation
     </PackageReleaseNotes>
   </PropertyGroup>
 

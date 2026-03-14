@@ -1,20 +1,53 @@
-# Release Notes — v2.1.0
+# Release Notes - v2.1.1
+
+## Production Compatibility Hardening
+
+- `UpdateDomainAsync` now uses the production-compatible `POST /v2/domains/{id}` route
+- `ResendEmailAsync` now falls back to `RetryEmailAsync` when the legacy `/resend` route is unavailable
+- `TestConnectionAsync` now preserves cancellation and updates `LastRateLimitInfo`
+- webhook timestamp validation now rejects future timestamps outside tolerance
+
+## Response Deserialization Hardening
+
+- tolerant boolean parsing for `true`/`false`, `0`/`1`, and string equivalents
+- tolerant number parsing when production returns numeric values as strings
+- tolerant `DateTime` parsing for mixed timestamp formats and empty values
+- tolerant recipient parsing when production returns a single string instead of an array
+- tolerant attachment parsing when production returns email attachments under `data` instead of `attachments`
+- tolerant DNS TTL parsing when production returns TTL as a string
+
+## Integration Tests
+
+- added production integration test project
+- split stable integration coverage from unstable endpoint groups
+- stable production coverage now validates:
+  - connection, domains, and API keys
+  - audiences, subscribers, contacts, and suppressions
+  - templates
+  - emails and email sub-resources
+  - events
+  - single email verification
+- unstable groups remain isolated for webhook endpoints, verification list endpoints, and retry/resend edge cases
+
+---
+
+# Release Notes - v2.1.0
 
 ## New Endpoints
 
 ### Email Sub-Resources
-- `GetEmailMetaAsync` — GET /emails/{id}/meta — Email metadata without body content (includes attachment info, headers, tracking, meta)
-- `GetEmailBodyAsync` — GET /emails/{id}/body — Parsed text and HTML body only
-- `GetEmailRawAsync` — GET /emails/{id}/raw — Full raw MIME message with metadata
-- `GetEmailAttachmentsAsync` — GET /emails/{id}/attachments — Attachment list with base64-encoded content
+- `GetEmailMetaAsync` - GET /emails/{id}/meta - Email metadata without body content
+- `GetEmailBodyAsync` - GET /emails/{id}/body - Parsed text and HTML body only
+- `GetEmailRawAsync` - GET /emails/{id}/raw - Full raw MIME message with metadata
+- `GetEmailAttachmentsAsync` - GET /emails/{id}/attachments - Attachment list with base64-encoded content
 
 ## New Features
 
 ### Webhook Signature Verification
-- `WebhookSignatureValidator.ValidateSignature()` — HMAC-SHA256 signature verification with timing-safe comparison
-- `WebhookSignatureValidator.ValidateSignature(..., clockTolerance)` — Signature verification with replay attack protection
-- `WebhookSignatureValidator.ComputeSignature()` — Compute expected signature for debugging
-- `WebhookHeaders` constants — `X-Emailit-Signature` and `X-Emailit-Timestamp` header names
+- `WebhookSignatureValidator.ValidateSignature()` - HMAC-SHA256 signature verification with timing-safe comparison
+- `WebhookSignatureValidator.ValidateSignature(..., clockTolerance)` - signature verification with replay attack protection
+- `WebhookSignatureValidator.ComputeSignature()` - compute expected signature for debugging
+- `WebhookHeaders` constants - `X-Emailit-Signature` and `X-Emailit-Timestamp` header names
 
 ### Email Status Constants
 - `EmailStatus` static class with all 12 API v2 statuses: `Accepted`, `Scheduled`, `Delivered`, `Bounced`, `Attempted`, `Failed`, `Rejected`, `Loaded`, `Clicked`, `Suppressed`, `Received`, `Complained`
@@ -23,96 +56,72 @@
 - `EmailType` static class: `Inbound`, `Outbound`
 
 ## Updated Models
-- `EmailResponse` — added `Type` field (inbound/outbound)
-- `ListEmailsRequest` — added `Type` filter for inbound/outbound emails
-- `TemplateResponse` — added `TotalVersions` field
+- `EmailResponse` - added `Type` field (inbound/outbound)
+- `ListEmailsRequest` - added `Type` filter for inbound/outbound emails
+- `TemplateResponse` - added `TotalVersions` field
 
 ## New Models
-- `EmailMetaResponse` — metadata response for /emails/{id}/meta
-- `EmailBodyResponse` — body response for /emails/{id}/body
-- `EmailRawResponse` — raw MIME response for /emails/{id}/raw
-- `EmailAttachmentsResponse` — attachments response for /emails/{id}/attachments
-- `EmailAttachmentInfo` — lightweight attachment metadata (without content payload)
+- `EmailMetaResponse` - metadata response for `/emails/{id}/meta`
+- `EmailBodyResponse` - body response for `/emails/{id}/body`
+- `EmailRawResponse` - raw MIME response for `/emails/{id}/raw`
+- `EmailAttachmentsResponse` - attachments response for `/emails/{id}/attachments`
+- `EmailAttachmentInfo` - lightweight attachment metadata
 
 ---
 
-# Release Notes — v2.0.1
+# Release Notes - v2.0.1
 
 ## New Endpoints
 
 ### Contacts
-- `CreateContactAsync` — Create a new contact
-- `GetContactAsync` — Get contact by ID or email address
-- `ListContactsAsync` — List all contacts with pagination
-- `UpdateContactAsync` — Update contact details, including global unsubscribe
-- `DeleteContactAsync` — Delete a contact
+- `CreateContactAsync` - create a new contact
+- `GetContactAsync` - get contact by ID or email address
+- `ListContactsAsync` - list all contacts with pagination
+- `UpdateContactAsync` - update contact details, including global unsubscribe
+- `DeleteContactAsync` - delete a contact
 
 ### Events
-- `ListEventsAsync` — List events with type filtering, pagination, and optional data inclusion
-- `GetEventAsync` — Get event details by ID
+- `ListEventsAsync` - list events with type filtering, pagination, and optional data inclusion
+- `GetEventAsync` - get event details by ID
 
 ### Webhooks
-- `CreateWebhookAsync` — Create a new webhook with event subscriptions
-- `GetWebhookAsync` — Get webhook details by ID
-- `ListWebhooksAsync` — List all webhooks with pagination
-- `UpdateWebhookAsync` — Update webhook settings
-- `DeleteWebhookAsync` — Delete a webhook
+- `CreateWebhookAsync` - create a new webhook with event subscriptions
+- `GetWebhookAsync` - get webhook details by ID
+- `ListWebhooksAsync` - list all webhooks with pagination
+- `UpdateWebhookAsync` - update webhook settings
+- `DeleteWebhookAsync` - delete a webhook
 
 ## Updated Endpoints
 
 ### Emails
-- **`RetryEmailAsync`** — New method replacing `ResendEmailAsync` (POST `/retry` instead of `/resend`)
+- `RetryEmailAsync` - new method replacing `ResendEmailAsync` (`POST /retry` instead of `/resend`)
 - `ResendEmailAsync` marked as `[Obsolete]`
-- `CancelEmailAsync` now returns `CancelEmailResponse` (with `Status` and `Message`) instead of `bool`
-- `SendEmailRequest`: replaced `TrackOpens`/`TrackClicks` booleans with `Tracking` object (`EmailTrackingOptions`), replaced `Metadata` with `Meta`, added `Headers` for custom email headers, `Subject` is now optional (template can provide it)
-- `EmailResponse`: added `Ids`, `Token`, `MessageId`, `Size`, `Tracking`, `Headers`, `Meta`, `Content`, `Message` fields; removed `Metadata`
-- `EmailAttachment`: added `ContentId` and `Encoding` fields
+- `CancelEmailAsync` now returns `CancelEmailResponse` instead of `bool`
 
 ### Domains
-- `CreateDomainRequest`: removed `FromEmail`, added `TrackLoads` and `TrackClicks`
-- `UpdateDomainAsync` now uses PATCH instead of POST
-- `UpdateDomainRequest`: added `TrackingKey` and `InboundKey` fields
-- `DomainResponse`: added `Uuid`, `VerificationToken`, `VerificationMethod`, `SpfStatus`, `DkimStatus`, `MxStatus`, `DmarcStatus`, `DkimIdentifierString`, `VerifiedAt`
+- `CreateDomainRequest` removed `FromEmail`, added `TrackLoads` and `TrackClicks`
+- `UpdateDomainRequest` added `TrackingKey` and `InboundKey`
+- `DomainResponse` added `Uuid`, verification fields, DNS status fields, and `VerifiedAt`
 
 ### Templates
-- `CreateTemplateRequest`: added required `Alias`, optional `From`, `ReplyTo`, `Editor` fields
-- `UpdateTemplateRequest`: added `Alias`, `From`, `ReplyTo`, `Editor` fields
-- `TemplateResponse`: replaced `Version`/`Published` with `Alias`, `From`, `ReplyTo`, `Editor`, `PublishedAt`, `PreviewUrl`, `Versions`
-- `ListTemplatesAsync` now accepts `ListTemplatesRequest` with filters (`FilterName`, `FilterAlias`, `FilterEditor`), sorting, and new pagination format (`PerPage`, `TotalRecords`, `CurrentPage`, `TotalPages`)
-- `DeleteTemplateResponse` updated to new format with `Data` and `Message`
-- Template CRUD responses are now wrapped in `{data: {...}, message: "..."}` — handled transparently by the client
+- `CreateTemplateRequest` added required `Alias`, optional `From`, `ReplyTo`, and `Editor`
+- `UpdateTemplateRequest` added `Alias`, `From`, `ReplyTo`, and `Editor`
+- `TemplateResponse` added alias, editor, publish, preview, and version fields
+- `ListTemplatesAsync` now uses `ListTemplatesRequest`
 
 ### Suppressions
-- `CreateSuppressionRequest`: added `KeepUntil` for temporary suppressions; type values updated to `recipient`, `bounce`, `complaint`, `unsubscribe`
-- `UpdateSuppressionRequest`: added `Email` and `KeepUntil` fields
-- `SuppressionResponse`: added `Timestamp` and `KeepUntil` fields
-- Suppressions can now be looked up by email address (in addition to ID)
+- `CreateSuppressionRequest` added `KeepUntil`
+- `UpdateSuppressionRequest` added `Email` and `KeepUntil`
+- `SuppressionResponse` added `Timestamp` and `KeepUntil`
 
 ### Subscribers
-- `SubscriberResponse`: added `AudienceId`, `ContactId`, `Subscribed`, `SubscribedAt`, `UnsubscribedAt`; removed `Status`
-- `UpdateSubscriberRequest`: added `Subscribed` field for managing subscription status
-- `ListSubscribersAsync`: added `subscribed` filter parameter
+- `SubscriberResponse` added audience and subscription state fields
+- `UpdateSubscriberRequest` added `Subscribed`
+- `ListSubscribersAsync` added `subscribed` filter
 
 ### Email Verification
-- `VerifyEmailRequest`: added `Mode` field
-- `EmailVerificationResponse`: completely revamped — now includes `Status`, `Score`, `Risk`, `Mode`, `Checks` (detailed verification checks), `Address` (parsed email components), `DidYouMean`, `MxRecords`
-- New models: `VerificationChecks`, `VerificationAddress`, `MxRecordInfo`
+- `VerifyEmailRequest` added `Mode`
+- `EmailVerificationResponse` added detailed scoring, checks, parsed address, and MX records
 
 ### API Keys
-- `ApiKeyResponse`: added `LastUsedAt` field
-
-## Breaking Changes
-- `CancelEmailAsync` return type changed from `Task<bool>` to `Task<CancelEmailResponse>`
-- `ListTemplatesAsync` signature changed from `(int page, int limit)` to `(ListTemplatesRequest? request)`
-- `ListSubscribersAsync` signature changed to include optional `bool? subscribed` parameter
-- `SendEmailRequest`: removed `TrackOpens`, `TrackClicks`, `Metadata` — use `Tracking` and `Meta` instead
-- `EmailVerificationResponse`: removed old fields (`RiskScore`, `IsDeliverable`, `IsDisposable`, `IsRoleAccount`, `IsFreeProvider`, `HasMxRecords`, `SmtpProvider`, `VerifiedAt`) — use `Score`, `Risk`, `Checks` instead
-- `SubscriberResponse`: removed `Status` — use `Subscribed` bool instead
-- `CreateDomainRequest`: removed `FromEmail`
-- `DomainResponse`: renamed `TrackOpens` → `TrackLoads`
-- `TemplateResponse`: removed `Version` and `Published` — use `PublishedAt` and `Versions` instead
-- `DeleteTemplateResponse`: replaced `Object`/`Id`/`Deleted` with `Data`/`Message`
-
-## Test Coverage
-- 98 unit tests covering all new and updated endpoints
-- New test files: `WebhookTests`, `ContactTests`, `EventTests`, `TemplateTests`, `SuppressionTests`, `SubscriberTests`, `VerificationTests`
+- `ApiKeyResponse` added `LastUsedAt`
