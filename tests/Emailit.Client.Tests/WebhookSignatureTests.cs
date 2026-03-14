@@ -109,4 +109,17 @@ public sealed class WebhookSignatureTests
                 TestPayload, "somesig", "not-a-number", TestSecret,
                 clockTolerance: TimeSpan.FromMinutes(5)));
     }
+
+    [Fact]
+    public void ValidateSignature_WithTolerance_ReturnsFalseForFutureTimestamp()
+    {
+        var futureTimestamp = DateTimeOffset.UtcNow.AddMinutes(10).ToUnixTimeSeconds().ToString();
+        var signature = WebhookSignatureValidator.ComputeSignature(TestPayload, futureTimestamp, TestSecret);
+
+        var result = WebhookSignatureValidator.ValidateSignature(
+            TestPayload, signature, futureTimestamp, TestSecret,
+            clockTolerance: TimeSpan.FromMinutes(5));
+
+        result.Should().BeFalse();
+    }
 }

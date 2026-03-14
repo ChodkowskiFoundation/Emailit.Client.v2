@@ -23,18 +23,18 @@
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageReleaseNotes>
-v2.1.0 — Email sub-resources, webhook signatures, status rework
+v2.1.0 - Email sub-resources, webhook signatures, status rework
 
 New endpoints:
-- GetEmailMetaAsync — GET /emails/{id}/meta (metadata without body)
-- GetEmailBodyAsync — GET /emails/{id}/body (parsed text/HTML only)
-- GetEmailRawAsync — GET /emails/{id}/raw (full MIME message)
-- GetEmailAttachmentsAsync — GET /emails/{id}/attachments (base64 content)
+- GetEmailMetaAsync - GET /emails/{id}/meta (metadata without body)
+- GetEmailBodyAsync - GET /emails/{id}/body (parsed text/HTML only)
+- GetEmailRawAsync - GET /emails/{id}/raw (full MIME message)
+- GetEmailAttachmentsAsync - GET /emails/{id}/attachments (base64 content)
 
 New features:
-- WebhookSignatureValidator — HMAC-SHA256 webhook signature verification with timing-safe comparison and replay attack protection
-- EmailStatus constants — all 12 email statuses after the API status rework (accepted, scheduled, delivered, bounced, attempted, failed, rejected, loaded, clicked, suppressed, received, complained)
-- EmailType constants — inbound/outbound email type support
+- WebhookSignatureValidator - HMAC-SHA256 webhook signature verification with timing-safe comparison and replay attack protection
+- EmailStatus constants - all 12 email statuses after the API status rework (accepted, scheduled, delivered, bounced, attempted, failed, rejected, loaded, clicked, suppressed, received, complained)
+- EmailType constants - inbound/outbound email type support
 
 Updated models:
 - EmailResponse: added Type field (inbound/outbound)
@@ -55,6 +55,5 @@ Updated models:
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
   </ItemGroup>
-
 
 </Project>

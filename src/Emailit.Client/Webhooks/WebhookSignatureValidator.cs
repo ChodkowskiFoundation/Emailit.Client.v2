@@ -49,7 +49,7 @@ public static class WebhookSignatureValidator
         var webhookTime = DateTimeOffset.FromUnixTimeSeconds(unixSeconds);
         var age = DateTimeOffset.UtcNow - webhookTime;
 
-        if (age > clockTolerance)
+        if (TimeSpan.Abs(age) > clockTolerance)
             return false;
 
         return ValidateSignature(payload, signature, timestamp, secret);

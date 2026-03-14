@@ -547,7 +547,14 @@ public sealed class EmailitClient : IEmailitClient
             var response = await _client.Request("/v2/domains")
                 .GetAsync(cancellationToken: ct);
 
-            return ParseRateLimitInfo(response);
+            var rateLimitInfo = ParseRateLimitInfo(response);
+            _lastRateLimitInfo = rateLimitInfo;
+
+            return rateLimitInfo;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
         }
         catch
         {

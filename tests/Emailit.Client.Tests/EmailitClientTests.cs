@@ -622,6 +622,8 @@ public sealed class EmailitClientTests : IDisposable
         result!.Limit.Should().Be(2);
         result.DailyLimit.Should().Be(5000);
         result.DailyRemaining.Should().Be(4500);
+        _client.LastRateLimitInfo.Should().NotBeNull();
+        _client.LastRateLimitInfo!.DailyRemaining.Should().Be(4500);
     }
 
     [Fact]
@@ -635,6 +637,17 @@ public sealed class EmailitClientTests : IDisposable
 
         // Assert
         result.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task TestConnectionAsync_Canceled_ThrowsOperationCanceledException()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        var act = () => _client.TestConnectionAsync(cts.Token);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(act);
     }
 
     #endregion
