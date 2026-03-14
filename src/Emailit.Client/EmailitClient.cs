@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 using Emailit.Client.Exceptions;
 using Emailit.Client.Models;
@@ -37,7 +38,15 @@ public sealed class EmailitClient : IEmailitClient
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        PropertyNameCaseInsensitive = true
+        PropertyNameCaseInsensitive = true,
+        NumberHandling = JsonNumberHandling.AllowReadingFromString,
+        Converters =
+        {
+            new FlexibleBooleanConverter(),
+            new FlexibleNullableBooleanConverter(),
+            new FlexibleDateTimeConverter(),
+            new FlexibleNullableDateTimeConverter()
+        }
     };
 
     /// <summary>
@@ -186,7 +195,7 @@ public sealed class EmailitClient : IEmailitClient
 
     public Task<DomainResponse> UpdateDomainAsync(string domainId, UpdateDomainRequest request, CancellationToken ct = default) =>
         ExecuteAsync<DomainResponse>(
-            () => _client.Request("/v2/domains", domainId).PatchJsonAsync(request, cancellationToken: ct),
+            () => _client.Request("/v2/domains", domainId).PostJsonAsync(request, cancellationToken: ct),
             ct);
 
     public Task<DomainResponse> VerifyDomainAsync(string domainId, CancellationToken ct = default) =>

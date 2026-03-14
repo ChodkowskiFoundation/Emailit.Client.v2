@@ -4,5 +4,6 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Emailit.Client.Tests/Emailit.Client.Tests.csproj" />
+    <Project Path="tests/Emailit.Client.IntegrationTests/Emailit.Client.IntegrationTests.csproj" />
   </Folder>
 </Solution>

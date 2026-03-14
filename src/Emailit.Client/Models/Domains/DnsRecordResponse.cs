@@ -29,6 +29,7 @@ public sealed record DnsRecordResponse
     /// TTL in seconds.
     /// </summary>
     [JsonPropertyName("ttl")]
+    [JsonConverter(typeof(FlexibleNullableInt32Converter))]
     public int? Ttl { get; init; }
 
     /// <summary>
