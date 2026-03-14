@@ -5,22 +5,24 @@ namespace Emailit.Client.Exceptions;
 /// <summary>
 /// Exception thrown when the per-second rate limit is exceeded (HTTP 429).
 /// </summary>
-public class RateLimitExceededException : EmailitException
+public class RateLimitExceededException : EmailitApiException
 {
-    /// <summary>
-    /// Rate limit information from the response headers.
-    /// </summary>
-    public RateLimitInfo? RateLimitInfo { get; }
-
-    public RateLimitExceededException(RateLimitInfo? rateLimitInfo = null)
-        : base("Rate limit exceeded. Too many requests per second.", 429)
+    public RateLimitExceededException(RateLimitInfo? rateLimitInfo = null, EmailitExceptionContext? context = null, Exception? innerException = null)
+        : this("Rate limit exceeded. Too many requests per second.", rateLimitInfo, context, innerException)
     {
-        RateLimitInfo = rateLimitInfo;
     }
 
-    public RateLimitExceededException(string message, RateLimitInfo? rateLimitInfo = null)
-        : base(message, 429)
+    public RateLimitExceededException(string message, RateLimitInfo? rateLimitInfo = null, EmailitExceptionContext? context = null, Exception? innerException = null)
+        : base(message, (context ?? new EmailitExceptionContext()) with
+        {
+            StatusCode = 429,
+            IsTransient = true,
+            RateLimitInfo = rateLimitInfo ?? context?.RateLimitInfo
+        }, innerException)
     {
-        RateLimitInfo = rateLimitInfo;
     }
+
+    public override string ProblemType => "urn:emailit:problem:rate-limit";
+
+    public override string ProblemTitle => "Emailit rate limit exceeded";
 }

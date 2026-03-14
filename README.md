@@ -6,34 +6,25 @@ The client covers emails, domains, API keys, audiences, subscribers, templates, 
 
 Current package version prepared in this repository: `2.1.1`.
 
-## Current State
+## Overview
 
-This package is tested against the live production Emailit API, not only against mocked responses.
+The library provides:
 
-The client now includes compatibility handling for several production response quirks:
+- async access to the Emailit v2 API through typed request and response models
+- dependency injection support and a multi-tenant client factory
+- typed exceptions with normalized `ProblemDetails` conversion
+- rate limit metadata on responses and on the client instance
+- webhook signature verification helpers
+- compatibility handling for inconsistent production payload shapes
 
-- booleans returned as `true`/`false`, `0`/`1`, or string equivalents
-- numbers returned as strings
-- timestamps returned in mixed formats, including empty strings
+The client is tolerant of several response variants seen in production, including:
+
+- booleans returned as `true`/`false`, `0`/`1`, or strings
+- numeric fields returned as strings
+- timestamps returned in mixed formats or as empty strings
 - recipient fields returned as either a single string or an array
-- email attachments returned as either `attachments` or `data`
-- legacy `ResendEmailAsync` falling back to `RetryEmailAsync` when `/resend` is unavailable
-
-Stable production integration coverage currently includes:
-
-- connection check and rate limits
-- domains and API keys
-- audiences, subscribers, contacts, and suppressions
-- templates
-- emails and email sub-resources
-- events
-- single email verification
-
-Some production endpoints are still inconsistent on the server side and are isolated as unstable integration coverage:
-
-- webhooks
-- verification list/results/export endpoints
-- retry/resend behavior as standalone production checks
+- attachment payloads returned under either `attachments` or `data`
+- legacy resend behavior routed through retry when `/resend` is unavailable
 
 ## Installation
 
@@ -56,7 +47,9 @@ Target frameworks:
   "Emailit": {
     "ApiKey": "em_your_api_key_here",
     "BaseUrl": "https://api.emailit.com",
-    "TimeoutSeconds": 30
+    "TimeoutSeconds": 30,
+    "ExceptionDetailMode": "Safe",
+    "MaxDiagnosticBodyLength": 1024
   }
 }
 ```
@@ -74,9 +67,17 @@ using var client = new EmailitClient(new EmailitClientOptions
 {
     ApiKey = "em_your_api_key_here",
     BaseUrl = "https://api.emailit.com",
-    TimeoutSeconds = 30
+    TimeoutSeconds = 30,
+    ExceptionDetailMode = EmailitExceptionDetailMode.Safe,
+    MaxDiagnosticBodyLength = 1024
 });
 ```
+
+`ExceptionDetailMode` controls how much context is captured in thrown exceptions:
+
+- `Minimal` - status, error code, rate limits, and transient/retry metadata
+- `Safe` - `Minimal` plus request method, request URI without query string, and request ID when available
+- `Diagnostic` - `Safe` plus truncated response body and response headers
 
 ### Multi-tenant factory
 
@@ -88,7 +89,14 @@ builder.Services.AddEmailitClientFactory(options =>
 });
 ```
 
-## Quick Usage
+## Common Usage
+
+Typical flow:
+
+1. configure `EmailitClientOptions`
+2. inject `IEmailitClient` or create `EmailitClient` manually
+3. call a typed async method such as `SendEmailAsync`, `ListDomainsAsync`, or `VerifyEmailAsync`
+4. handle typed `EmailitException` subclasses or convert them to `ProblemDetails`
 
 ### Send an email
 
@@ -272,27 +280,49 @@ try
 }
 catch (EmailitValidationException ex)
 {
-    Console.WriteLine(ex.Message);
-}
-catch (EmailitAuthenticationException)
-{
-}
-catch (EmailitNotFoundException)
-{
-}
-catch (DailyLimitExceededException ex)
-{
-    Console.WriteLine(ex.RateLimitInfo?.DailyRemaining);
+    var problem = ex.ToProblemDetails();
+    return Results.ValidationProblem(
+        ex.ValidationErrors?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value) ?? new Dictionary<string, string[]>(),
+        detail: problem.Detail,
+        title: problem.Title,
+        type: problem.Type);
 }
 catch (RateLimitExceededException ex)
 {
-    Console.WriteLine(ex.RateLimitInfo?.RetryAfterSeconds);
+    var problem = ex.ToProblemDetails();
+    return Results.Problem(
+        title: problem.Title,
+        type: problem.Type,
+        detail: problem.Detail,
+        statusCode: problem.Status,
+        extensions: new Dictionary<string, object?>(problem.Extensions));
+}
+catch (EmailitTimeoutException ex) when (ex.IsTransient)
+{
+    throw;
 }
 catch (EmailitException ex)
 {
-    Console.WriteLine($"{ex.StatusCode}: {ex.Message}");
+    var problem = ex.ToProblemDetails();
+    return Results.Problem(
+        title: problem.Title,
+        type: problem.Type,
+        detail: problem.Detail,
+        statusCode: problem.Status ?? 502,
+        extensions: new Dictionary<string, object?>(problem.Extensions));
 }
 ```
+
+The client classifies failures into distinct exception types so your application can make decisions instead of only logging messages:
+
+- `EmailitValidationException` - invalid request payload
+- `EmailitUnprocessableEntityException` - request shape is valid but the current resource state makes the operation invalid
+- `EmailitAuthenticationException` / `EmailitAuthorizationException` - credential or permission issues
+- `EmailitNotFoundException` / `EmailitConflictException` - resource state issues
+- `RateLimitExceededException` / `DailyLimitExceededException` - retry or backoff conditions
+- `EmailitTimeoutException` / `EmailitTransportException` - transient network failures
+- `EmailitSerializationException` / `EmailitUnexpectedResponseException` - contract mismatches between the API and the client
+- `EmailitServerException` - server-side failures returned by Emailit
 
 ## Rate Limits
 
@@ -306,48 +336,9 @@ var info = await client.TestConnectionAsync();
 Console.WriteLine(client.LastRateLimitInfo?.DailyRemaining);
 ```
 
-## Integration Tests
+`TestConnectionAsync` throws the same typed exceptions as the rest of the client when the API is unreachable or rejects the request.
 
-The repository contains two test projects:
-
-- `tests/Emailit.Client.Tests` - unit tests with mocked HTTP
-- `tests/Emailit.Client.IntegrationTests` - production integration tests
-
-### Required environment variables
-
-```powershell
-$env:EMAILIT_INTEGRATION_API_KEY = "em_or_secret_key"
-$env:EMAILIT_INTEGRATION_DOMAIN = "yourdomain.com"
-$env:EMAILIT_INTEGRATION_TO_EMAIL = "you@example.com"
-```
-
-Optional:
-
-```powershell
-$env:EMAILIT_INTEGRATION_BASE_URL = "https://api.emailit.com"
-$env:EMAILIT_INTEGRATION_TIMEOUT_SECONDS = "60"
-$env:EMAILIT_INTEGRATION_ENABLE_UNSTABLE = "true"
-```
-
-### Run unit tests
-
-```bash
-dotnet test tests/Emailit.Client.Tests/Emailit.Client.Tests.csproj -c Release
-```
-
-### Run stable production integration tests
-
-```bash
-dotnet test tests/Emailit.Client.IntegrationTests/Emailit.Client.IntegrationTests.csproj -c Release --filter "Stability!=Unstable"
-```
-
-### Run unstable production integration tests too
-
-```bash
-dotnet test tests/Emailit.Client.IntegrationTests/Emailit.Client.IntegrationTests.csproj -c Release
-```
-
-## Building the NuGet Package
+## Packaging
 
 Only the library project is packaged.
 
@@ -361,7 +352,7 @@ Recommended packaging command:
 dotnet pack src/Emailit.Client/Emailit.Client.csproj -c Release -o nupkg
 ```
 
-This avoids packing the solution and guarantees that integration tests do not enter the NuGet package.
+This avoids packing the solution and guarantees that test projects do not enter the NuGet package.
 
 ## Supported Endpoints
 
@@ -455,6 +446,69 @@ This avoids packing the solution and guarantees that integration tests do not en
 - `ListWebhooksAsync`
 - `UpdateWebhookAsync`
 - `DeleteWebhookAsync`
+
+## Testing
+
+The repository contains two test projects:
+
+- `tests/Emailit.Client.Tests` - unit tests with mocked HTTP
+- `tests/Emailit.Client.IntegrationTests` - production integration tests
+
+### Required environment variables
+
+```powershell
+$env:EMAILIT_INTEGRATION_API_KEY = "em_or_secret_key"
+$env:EMAILIT_INTEGRATION_DOMAIN = "yourdomain.com"
+$env:EMAILIT_INTEGRATION_TO_EMAIL = "you@example.com"
+```
+
+Optional:
+
+```powershell
+$env:EMAILIT_INTEGRATION_BASE_URL = "https://api.emailit.com"
+$env:EMAILIT_INTEGRATION_TIMEOUT_SECONDS = "60"
+$env:EMAILIT_INTEGRATION_ENABLE_UNSTABLE = "true"
+```
+
+### Run unit tests
+
+```bash
+dotnet test tests/Emailit.Client.Tests/Emailit.Client.Tests.csproj -c Release
+```
+
+### Run stable production integration tests
+
+```bash
+dotnet test tests/Emailit.Client.IntegrationTests/Emailit.Client.IntegrationTests.csproj -c Release --filter "Stability!=Unstable"
+```
+
+### Run unstable production integration tests too
+
+```bash
+dotnet test tests/Emailit.Client.IntegrationTests/Emailit.Client.IntegrationTests.csproj -c Release
+```
+
+Stable production integration coverage currently includes:
+
+- connection check and rate limits
+- domains and API keys
+- audiences, subscribers, contacts, and suppressions
+- templates
+- emails and email sub-resources
+- events
+- single email verification
+
+Unstable production coverage is kept separate for backend areas that are known to be inconsistent:
+
+- webhooks
+- verification list/results/export endpoints
+- retry/resend behavior
+
+When running the unstable suite, known backend inconsistencies are treated as observations rather than client regressions when:
+
+- a retryable email candidate cannot be produced within the observation window
+- a webhook create response returns an ID that never becomes readable
+- verification list creation returns a production `500`
 
 ## Resources
 

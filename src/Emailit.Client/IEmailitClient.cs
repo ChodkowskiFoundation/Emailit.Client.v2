@@ -416,7 +416,8 @@ public interface IEmailitClient : IDisposable
     /// <summary>
     /// Tests the API connection and returns rate limit information.
     /// </summary>
-    /// <returns>Rate limit info if successful, null otherwise.</returns>
+    /// <returns>Rate limit info if successful.</returns>
+    /// <exception cref="Emailit.Client.Exceptions.EmailitException">Thrown when the connection test fails.</exception>
     Task<RateLimitInfo?> TestConnectionAsync(CancellationToken ct = default);
 
     #endregion

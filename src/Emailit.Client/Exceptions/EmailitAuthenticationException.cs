@@ -3,15 +3,19 @@ namespace Emailit.Client.Exceptions;
 /// <summary>
 /// Exception thrown when authentication fails (HTTP 401).
 /// </summary>
-public sealed class EmailitAuthenticationException : EmailitException
+public sealed class EmailitAuthenticationException : EmailitApiException
 {
     public EmailitAuthenticationException()
-        : base("Invalid or missing API key.", 401)
+        : this("Invalid or missing API key.")
     {
     }
 
-    public EmailitAuthenticationException(string message)
-        : base(message, 401)
+    public EmailitAuthenticationException(string message, EmailitExceptionContext? context = null, Exception? innerException = null)
+        : base(message, (context ?? new EmailitExceptionContext()) with { StatusCode = 401 }, innerException)
     {
     }
+
+    public override string ProblemType => "urn:emailit:problem:authentication";
+
+    public override string ProblemTitle => "Emailit authentication failed";
 }

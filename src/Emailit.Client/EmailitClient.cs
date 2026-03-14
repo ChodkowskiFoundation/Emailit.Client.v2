@@ -332,7 +332,9 @@ public sealed class EmailitClient : IEmailitClient
         var wrapper = await ExecuteAsync<TemplateDataResponse>(
             () => _client.Request("/v2/templates").PostJsonAsync(request, cancellationToken: ct),
             ct);
-        return wrapper.Data ?? throw new Exceptions.EmailitException("Failed to deserialize template response");
+        return wrapper.Data ?? throw CreateUnexpectedResponseException(
+            BuildManualContext(HttpMethod.Post, "/v2/templates"),
+            "Template response did not contain a data payload.");
     }
 
     public async Task<TemplateResponse> GetTemplateAsync(string templateId, CancellationToken ct = default)
@@ -340,7 +342,9 @@ public sealed class EmailitClient : IEmailitClient
         var wrapper = await ExecuteAsync<TemplateDataResponse>(
             () => _client.Request("/v2/templates", templateId).GetAsync(cancellationToken: ct),
             ct);
-        return wrapper.Data ?? throw new Exceptions.EmailitException("Failed to deserialize template response");
+        return wrapper.Data ?? throw CreateUnexpectedResponseException(
+            BuildManualContext(HttpMethod.Get, $"/v2/templates/{templateId}"),
+            "Template response did not contain a data payload.");
     }
 
     public Task<TemplatePaginatedResponse> ListTemplatesAsync(ListTemplatesRequest? request = null, CancellationToken ct = default)
@@ -374,7 +378,9 @@ public sealed class EmailitClient : IEmailitClient
         var wrapper = await ExecuteAsync<TemplateDataResponse>(
             () => _client.Request("/v2/templates", templateId).PostJsonAsync(request, cancellationToken: ct),
             ct);
-        return wrapper.Data ?? throw new Exceptions.EmailitException("Failed to deserialize template response");
+        return wrapper.Data ?? throw CreateUnexpectedResponseException(
+            BuildManualContext(HttpMethod.Post, $"/v2/templates/{templateId}"),
+            "Template response did not contain a data payload.");
     }
 
     public async Task<TemplateResponse> PublishTemplateAsync(string templateId, CancellationToken ct = default)
@@ -382,7 +388,9 @@ public sealed class EmailitClient : IEmailitClient
         var wrapper = await ExecuteAsync<TemplateDataResponse>(
             () => _client.Request("/v2/templates", templateId, "publish").PostAsync(cancellationToken: ct),
             ct);
-        return wrapper.Data ?? throw new Exceptions.EmailitException("Failed to deserialize template response");
+        return wrapper.Data ?? throw CreateUnexpectedResponseException(
+            BuildManualContext(HttpMethod.Post, $"/v2/templates/{templateId}/publish"),
+            "Template response did not contain a data payload.");
     }
 
     public Task<DeleteTemplateResponse> DeleteTemplateAsync(string templateId, CancellationToken ct = default) =>
@@ -464,12 +472,19 @@ public sealed class EmailitClient : IEmailitClient
             _lastRateLimitInfo = ParseRateLimitInfo(response);
 
             return response.ResponseMessage.RequestMessage?.RequestUri?.ToString()
-                ?? throw new EmailitException("Failed to get export URL");
+                ?? throw CreateUnexpectedResponseException(
+                    CreateSuccessContext(response, responseBody: null),
+                    "Emailit did not return an export URL.");
+        }
+        catch (FlurlHttpTimeoutException ex)
+        {
+            RethrowIfCallerCanceled(ex, ct);
+            throw CreateTimeoutException(ex);
         }
         catch (FlurlHttpException ex)
         {
-            await HandleErrorAsync(ex);
-            throw; // unreachable — HandleErrorAsync always throws
+            RethrowIfCallerCanceled(ex, ct);
+            throw await CreateExceptionAsync(ex);
         }
     }
 
@@ -578,13 +593,15 @@ public sealed class EmailitClient : IEmailitClient
 
             return rateLimitInfo;
         }
-        catch (OperationCanceledException)
+        catch (FlurlHttpTimeoutException ex)
         {
-            throw;
+            RethrowIfCallerCanceled(ex, ct);
+            throw CreateTimeoutException(ex);
         }
-        catch
+        catch (FlurlHttpException ex)
         {
-            return null;
+            RethrowIfCallerCanceled(ex, ct);
+            throw await CreateExceptionAsync(ex);
         }
     }
 
@@ -604,25 +621,52 @@ public sealed class EmailitClient : IEmailitClient
         try
         {
             var response = await requestFunc();
-            var rateLimitInfo = ParseRateLimitInfo(response);
-            _lastRateLimitInfo = rateLimitInfo;
-
-            using var stream = await response.GetStreamAsync();
-            var result = await JsonSerializer.DeserializeAsync<T>(stream, JsonOptions, ct)
-                ?? throw new EmailitException("Failed to deserialize response");
-
-            if (result is EmailResponse emailResponse)
-            {
-                return (T)(object)(emailResponse with { RateLimitInfo = rateLimitInfo });
-            }
-
-            return result;
+            return await DeserializeResponseAsync<T>(response, ct);
+        }
+        catch (FlurlHttpTimeoutException ex)
+        {
+            RethrowIfCallerCanceled(ex, ct);
+            throw CreateTimeoutException(ex);
         }
         catch (FlurlHttpException ex)
         {
-            await HandleErrorAsync(ex);
-            throw;
+            RethrowIfCallerCanceled(ex, ct);
+            throw await CreateExceptionAsync(ex);
         }
+    }
+
+    private async Task<T> DeserializeResponseAsync<T>(IFlurlResponse response, CancellationToken ct)
+    {
+        var rateLimitInfo = ParseRateLimitInfo(response);
+        _lastRateLimitInfo = rateLimitInfo;
+
+        var body = await response.GetStringAsync();
+        var context = CreateSuccessContext(response, body);
+
+        T? result;
+        try
+        {
+            result = JsonSerializer.Deserialize<T>(body, JsonOptions);
+        }
+        catch (JsonException ex)
+        {
+            throw new EmailitSerializationException(
+                $"Failed to deserialize Emailit response as {typeof(T).Name}.",
+                context,
+                ex);
+        }
+
+        if (result is null)
+        {
+            throw CreateUnexpectedResponseException(
+                context,
+                $"Emailit returned an empty response body for {typeof(T).Name}.");
+        }
+
+        if (result is EmailResponse emailResponse)
+            return (T)(object)(emailResponse with { RateLimitInfo = rateLimitInfo });
+
+        return result;
     }
 
     private static RateLimitInfo ParseRateLimitInfo(IFlurlResponse response) =>
@@ -632,10 +676,13 @@ public sealed class EmailitClient : IEmailitClient
                 h => h.Value,
                 StringComparer.OrdinalIgnoreCase));
 
-    private async Task HandleErrorAsync(FlurlHttpException ex)
+    private async Task<EmailitException> CreateExceptionAsync(FlurlHttpException ex)
     {
+        if (ex.Call?.Response is null)
+            return new EmailitTransportException("Failed to reach the Emailit API.", CreateTransportContext(ex), ex);
+
         var statusCode = ex.StatusCode ?? 0;
-        var body = await ex.GetResponseStringAsync() ?? "";
+        var body = await SafeGetResponseStringAsync(ex);
 
         ErrorResponse? errorResponse = null;
         try
@@ -647,27 +694,222 @@ public sealed class EmailitClient : IEmailitClient
             // Ignore deserialization errors
         }
 
+        var response = ex.Call.Response;
+        var rateLimitInfo = ParseRateLimitInfo(response);
+        _lastRateLimitInfo = rateLimitInfo;
+
+        var context = CreateErrorContext(response, body, errorResponse, statusCode, rateLimitInfo);
         var message = errorResponse?.GetErrorMessage() ?? ex.Message;
 
-        RateLimitInfo? rateLimitInfo = null;
-        if (ex.Call?.Response != null)
+        return statusCode switch
         {
-            rateLimitInfo = ParseRateLimitInfo(ex.Call.Response);
-            _lastRateLimitInfo = rateLimitInfo;
+            400 => new EmailitValidationException(message, errorResponse?.GetValidationErrors(), context, ex),
+            401 => new EmailitAuthenticationException(message, context, ex),
+            403 => new EmailitAuthorizationException(message, context, ex),
+            404 => new EmailitNotFoundException(message, context, ex),
+            409 => new EmailitConflictException(message, context, ex),
+            413 => new EmailitMessageTooLargeException(errorResponse?.Details ?? message, context, ex),
+            422 => new EmailitUnprocessableEntityException(message, errorResponse?.GetValidationErrors(), context, ex),
+            429 when rateLimitInfo?.IsDailyLimitReached == true => new DailyLimitExceededException(rateLimitInfo, context, ex),
+            429 => new RateLimitExceededException(message, rateLimitInfo, context, ex),
+            >= 500 => new EmailitServerException(message, context, ex),
+            _ => new EmailitApiException(message, context, ex)
+        };
+    }
+
+    private EmailitTimeoutException CreateTimeoutException(FlurlHttpTimeoutException ex)
+    {
+        var message = $"The Emailit API request timed out after {_options.TimeoutSeconds} seconds.";
+        return new EmailitTimeoutException(message, CreateTransportContext(ex), ex);
+    }
+
+    private EmailitExceptionContext CreateSuccessContext(IFlurlResponse response, string? responseBody)
+    {
+        var headers = response.Headers.ToDictionary(
+            h => h.Name,
+            h => h.Value,
+            StringComparer.OrdinalIgnoreCase);
+
+        var requestMessage = response.ResponseMessage.RequestMessage;
+        return BuildContext(
+            statusCode: (int)response.StatusCode,
+            errorCode: null,
+            errorType: null,
+            requestMethod: requestMessage?.Method.Method,
+            requestUri: requestMessage?.RequestUri,
+            requestId: FindCorrelationId(headers),
+            rateLimitInfo: ParseRateLimitInfo(response),
+            isTransient: false,
+            responseBody: responseBody,
+            responseHeaders: headers);
+    }
+
+    private EmailitExceptionContext CreateErrorContext(
+        IFlurlResponse response,
+        string? responseBody,
+        ErrorResponse? errorResponse,
+        int statusCode,
+        RateLimitInfo? rateLimitInfo)
+    {
+        var headers = response.Headers.ToDictionary(
+            h => h.Name,
+            h => h.Value,
+            StringComparer.OrdinalIgnoreCase);
+
+        var requestMessage = response.ResponseMessage.RequestMessage;
+        return BuildContext(
+            statusCode: statusCode,
+            errorCode: errorResponse?.Code,
+            errorType: errorResponse?.Type ?? errorResponse?.Error,
+            requestMethod: requestMessage?.Method.Method,
+            requestUri: requestMessage?.RequestUri,
+            requestId: FindCorrelationId(headers),
+            rateLimitInfo: rateLimitInfo,
+            isTransient: IsTransientStatusCode(statusCode),
+            responseBody: responseBody,
+            responseHeaders: headers);
+    }
+
+    private EmailitExceptionContext CreateTransportContext(FlurlHttpException ex)
+    {
+        Uri? requestUri = null;
+        if (Uri.TryCreate(ex.Call?.Request?.Url?.ToString(), UriKind.Absolute, out var parsedUri))
+            requestUri = parsedUri;
+
+        return BuildContext(
+            statusCode: null,
+            errorCode: null,
+            errorType: null,
+            requestMethod: ex.Call?.Request?.Verb?.ToString(),
+            requestUri: requestUri,
+            requestId: null,
+            rateLimitInfo: null,
+            isTransient: true,
+            responseBody: null,
+            responseHeaders: null);
+    }
+
+    private EmailitExceptionContext BuildManualContext(HttpMethod method, string relativePath) =>
+        BuildContext(
+            statusCode: null,
+            errorCode: null,
+            errorType: null,
+            requestMethod: method.Method,
+            requestUri: CreateAbsoluteUri(relativePath),
+            requestId: null,
+            rateLimitInfo: null,
+            isTransient: false,
+            responseBody: null,
+            responseHeaders: null);
+
+    private EmailitExceptionContext BuildContext(
+        int? statusCode,
+        string? errorCode,
+        string? errorType,
+        string? requestMethod,
+        Uri? requestUri,
+        string? requestId,
+        RateLimitInfo? rateLimitInfo,
+        bool isTransient,
+        string? responseBody,
+        IReadOnlyDictionary<string, string>? responseHeaders)
+    {
+        var sanitizedUri = _options.ExceptionDetailMode >= EmailitExceptionDetailMode.Safe
+            ? SanitizeRequestUri(requestUri)
+            : null;
+
+        return new EmailitExceptionContext
+        {
+            StatusCode = statusCode,
+            ErrorCode = errorCode,
+            ErrorType = errorType,
+            RequestMethod = _options.ExceptionDetailMode >= EmailitExceptionDetailMode.Safe ? requestMethod : null,
+            RequestUri = sanitizedUri,
+            RequestPath = sanitizedUri?.AbsolutePath,
+            RequestId = _options.ExceptionDetailMode >= EmailitExceptionDetailMode.Safe ? requestId : null,
+            RateLimitInfo = rateLimitInfo,
+            IsTransient = isTransient,
+            ResponseBody = _options.ExceptionDetailMode == EmailitExceptionDetailMode.Diagnostic
+                ? Truncate(responseBody)
+                : null,
+            ResponseHeaders = _options.ExceptionDetailMode == EmailitExceptionDetailMode.Diagnostic
+                ? responseHeaders
+                : null
+        };
+    }
+
+    private static bool IsTransientStatusCode(int statusCode) =>
+        statusCode is 408 or 425 or 429 || statusCode >= 500;
+
+    private static string? FindCorrelationId(IReadOnlyDictionary<string, string> headers)
+    {
+        foreach (var headerName in new[] { "x-request-id", "request-id", "x-correlation-id", "trace-id" })
+        {
+            if (headers.TryGetValue(headerName, out var value) && !string.IsNullOrWhiteSpace(value))
+                return value;
+
+            foreach (var pair in headers)
+            {
+                if (string.Equals(pair.Key, headerName, StringComparison.OrdinalIgnoreCase) &&
+                    !string.IsNullOrWhiteSpace(pair.Value))
+                {
+                    return pair.Value;
+                }
+            }
         }
 
-        throw statusCode switch
+        return null;
+    }
+
+    private Uri? SanitizeRequestUri(Uri? requestUri)
+    {
+        if (requestUri is null)
+            return null;
+
+        var sanitized = requestUri.GetLeftPart(UriPartial.Path);
+        return Uri.TryCreate(sanitized, UriKind.Absolute, out var parsed) ? parsed : null;
+    }
+
+    private string? Truncate(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return value;
+
+        return value.Length <= _options.MaxDiagnosticBodyLength
+            ? value
+            : value[.._options.MaxDiagnosticBodyLength];
+    }
+
+    private Uri? CreateAbsoluteUri(string relativePath)
+    {
+        if (!Uri.TryCreate(_options.BaseUrl, UriKind.Absolute, out var baseUri))
+            return null;
+
+        return Uri.TryCreate(baseUri, relativePath, out var absoluteUri) ? absoluteUri : null;
+    }
+
+    private EmailitUnexpectedResponseException CreateUnexpectedResponseException(
+        EmailitExceptionContext context,
+        string message,
+        Exception? innerException = null) =>
+        new(message, context, innerException);
+
+    private static void RethrowIfCallerCanceled(FlurlHttpException ex, CancellationToken ct)
+    {
+        if (ct.IsCancellationRequested && ex.InnerException is OperationCanceledException operationCanceledException)
+            throw new OperationCanceledException("The operation was canceled.", operationCanceledException, ct);
+    }
+
+    private static async Task<string> SafeGetResponseStringAsync(FlurlHttpException ex)
+    {
+        try
         {
-            400 => new EmailitValidationException(message, errorResponse?.Errors),
-            401 => new EmailitAuthenticationException(message),
-            403 => new EmailitException(message, 403),
-            404 => new EmailitNotFoundException(message),
-            413 => new EmailitMessageTooLargeException(errorResponse?.Details ?? message),
-            429 when rateLimitInfo?.IsDailyLimitReached == true => new DailyLimitExceededException(rateLimitInfo),
-            429 => new RateLimitExceededException(rateLimitInfo),
-            >= 500 => new EmailitException($"Server error: {message}", statusCode),
-            _ => new EmailitException(message, statusCode)
-        };
+            return await ex.GetResponseStringAsync() ?? string.Empty;
+        }
+        catch
+        {
+            return string.Empty;
+        }
     }
 
     #endregion

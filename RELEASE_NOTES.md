@@ -1,3 +1,15 @@
+# Release Notes - Unreleased
+
+## Exception Handling Overhaul
+
+- added richer exception context with request method, sanitized request URI, request ID, transient/retry metadata, rate limits, and optional diagnostic payload capture
+- added `EmailitProblemDetails` conversion so consumers can return standardized RFC 7807-style responses without introducing a logger dependency
+- added dedicated exception types for authorization, conflicts, transport failures, timeouts, deserialization failures, unexpected response shapes, and server-side failures
+- `TestConnectionAsync` now throws typed exceptions instead of silently returning `null`
+- added client options to control sensitive diagnostic capture: `ExceptionDetailMode` and `MaxDiagnosticBodyLength`
+
+---
+
 # Release Notes - v2.1.1
 
 ## Production Compatibility Hardening

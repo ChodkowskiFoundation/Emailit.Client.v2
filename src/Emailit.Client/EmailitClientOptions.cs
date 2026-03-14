@@ -26,6 +26,16 @@ public sealed class EmailitClientOptions
     public int TimeoutSeconds { get; set; } = 30;
 
     /// <summary>
+    /// Controls how much diagnostic context is captured in thrown exceptions.
+    /// </summary>
+    public EmailitExceptionDetailMode ExceptionDetailMode { get; set; } = EmailitExceptionDetailMode.Safe;
+
+    /// <summary>
+    /// Maximum number of response body characters captured for diagnostic exception details.
+    /// </summary>
+    public int MaxDiagnosticBodyLength { get; set; } = 1024;
+
+    /// <summary>
     /// Validates the options and throws if invalid.
     /// </summary>
     /// <exception cref="InvalidOperationException">Thrown when required options are missing.</exception>
@@ -46,6 +56,11 @@ public sealed class EmailitClientOptions
         if (TimeoutSeconds <= 0)
         {
             throw new InvalidOperationException("TimeoutSeconds must be greater than 0.");
+        }
+
+        if (MaxDiagnosticBodyLength <= 0)
+        {
+            throw new InvalidOperationException("MaxDiagnosticBodyLength must be greater than 0.");
         }
     }
 }

@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Emailit.Client.Exceptions;
 using Emailit.Client.Models.Emails;
 using Flurl.Http.Testing;
@@ -12,18 +14,25 @@ public sealed class EmailitClientTests : IDisposable
     public EmailitClientTests()
     {
         _httpTest = new HttpTest();
-        _client = new EmailitClient(new EmailitClientOptions
-        {
-            ApiKey = "em_test_key",
-            BaseUrl = "https://api.emailit.com",
-            TimeoutSeconds = 30
-        });
+        _client = CreateClient();
     }
 
     public void Dispose()
     {
         _httpTest.Dispose();
     }
+
+    private static EmailitClient CreateClient(
+        EmailitExceptionDetailMode detailMode = EmailitExceptionDetailMode.Safe,
+        int maxDiagnosticBodyLength = 1024) =>
+        new(new EmailitClientOptions
+        {
+            ApiKey = "em_test_key",
+            BaseUrl = "https://api.emailit.com",
+            TimeoutSeconds = 30,
+            ExceptionDetailMode = detailMode,
+            MaxDiagnosticBodyLength = maxDiagnosticBodyLength
+        });
 
     #region SendEmailAsync Tests
 
@@ -212,7 +221,7 @@ public sealed class EmailitClientTests : IDisposable
     }
 
     [Fact]
-    public async Task SendEmailAsync_Forbidden_ThrowsEmailitException()
+    public async Task SendEmailAsync_Forbidden_ThrowsAuthorizationException()
     {
         // Arrange
         _httpTest.RespondWithJson(new { error = "forbidden", message = "Access denied" }, 403);
@@ -226,13 +235,15 @@ public sealed class EmailitClientTests : IDisposable
         };
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<EmailitException>(
+        var ex = await Assert.ThrowsAsync<EmailitAuthorizationException>(
             () => _client.SendEmailAsync(request));
         ex.StatusCode.Should().Be(403);
+        ex.RequestMethod.Should().Be("POST");
+        ex.RequestUri.Should().Be(new Uri("https://api.emailit.com/v2/emails"));
     }
 
     [Fact]
-    public async Task SendEmailAsync_ServerError_ThrowsEmailitException()
+    public async Task SendEmailAsync_ServerError_ThrowsServerException()
     {
         // Arrange
         _httpTest.RespondWithJson(new { error = "internal_error", message = "Something went wrong" }, 500);
@@ -246,9 +257,36 @@ public sealed class EmailitClientTests : IDisposable
         };
 
         // Act & Assert
-        var ex = await Assert.ThrowsAsync<EmailitException>(
+        var ex = await Assert.ThrowsAsync<EmailitServerException>(
             () => _client.SendEmailAsync(request));
-        ex.Message.Should().Contain("Server error");
+        ex.Message.Should().Be("Something went wrong");
+        ex.IsTransient.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SendEmailAsync_UnprocessableEntity_ThrowsTypedException()
+    {
+        _httpTest.RespondWithJson(new
+        {
+            error = "unprocessable_entity",
+            message = "Current email state does not allow retry",
+            errors = new { status = new[] { "canceled" } }
+        }, 422);
+
+        var request = new SendEmailRequest
+        {
+            From = "sender@example.com",
+            To = ["recipient@example.com"],
+            Subject = "Test",
+            Html = "<p>Test</p>"
+        };
+
+        var ex = await Assert.ThrowsAsync<EmailitUnprocessableEntityException>(
+            () => _client.SendEmailAsync(request));
+
+        ex.StatusCode.Should().Be(422);
+        ex.ValidationErrors.Should().ContainKey("status");
+        ex.ProblemType.Should().Be("urn:emailit:problem:unprocessable-entity");
     }
 
     [Fact]
@@ -275,6 +313,100 @@ public sealed class EmailitClientTests : IDisposable
             () => _client.SendEmailAsync(request));
 
         ex.ValidationErrors.Should().ContainKey("to");
+        var problem = ex.ToProblemDetails();
+        problem.Status.Should().Be(400);
+        problem.Title.Should().Be("Emailit request validation failed");
+        problem.Extensions.Should().ContainKey("errors");
+        problem.Extensions.Should().ContainKey("requestUri");
+        problem.Extensions.Should().NotContainKey("responseBody");
+    }
+
+    [Fact]
+    public async Task SendEmailAsync_WithDiagnosticMode_CapturesDiagnosticContext()
+    {
+        using var client = CreateClient(EmailitExceptionDetailMode.Diagnostic, maxDiagnosticBodyLength: 128);
+
+        _httpTest.RespondWithJson(new
+        {
+            error = "validation_error",
+            message = "Validation failed",
+            errors = new { to = new[] { "Invalid email format" } }
+        }, 400, new
+        {
+            x_request_id = "req_123"
+        });
+
+        var request = new SendEmailRequest
+        {
+            From = "sender@example.com",
+            To = ["invalid-email"],
+            Subject = "Test",
+            Html = "<p>Test</p>"
+        };
+
+        var ex = await Assert.ThrowsAsync<EmailitValidationException>(() => client.SendEmailAsync(request));
+
+        ex.RequestId.Should().Be("req_123");
+        ex.ResponseBody.Should().Contain("Validation failed");
+        ex.ResponseBody!.Length.Should().BeLessThanOrEqualTo(128);
+        ex.ResponseHeaders.Should().ContainKey("x-request-id");
+    }
+
+    [Fact]
+    public async Task SendEmailAsync_WhenResponseCannotBeDeserialized_ThrowsSerializationException()
+    {
+        _httpTest.RespondWith("{\"id\":\"em_123\",\"status\":\"queued\",\"created_at\":{}}", 200);
+
+        var request = new SendEmailRequest
+        {
+            From = "sender@example.com",
+            To = ["recipient@example.com"],
+            Subject = "Test",
+            Html = "<p>Test</p>"
+        };
+
+        var ex = await Assert.ThrowsAsync<EmailitSerializationException>(() => _client.SendEmailAsync(request));
+
+        ex.RequestUri.Should().Be(new Uri("https://api.emailit.com/v2/emails"));
+        ex.InnerException.Should().BeOfType<JsonException>();
+    }
+
+    [Fact]
+    public async Task SendEmailAsync_OnTimeout_ThrowsTimeoutException()
+    {
+        _httpTest.SimulateTimeout();
+
+        var request = new SendEmailRequest
+        {
+            From = "sender@example.com",
+            To = ["recipient@example.com"],
+            Subject = "Test",
+            Html = "<p>Test</p>"
+        };
+
+        var ex = await Assert.ThrowsAsync<EmailitTimeoutException>(() => _client.SendEmailAsync(request));
+
+        ex.IsTransient.Should().BeTrue();
+        ex.RequestUri.Should().Be(new Uri("https://api.emailit.com/v2/emails"));
+    }
+
+    [Fact]
+    public async Task SendEmailAsync_OnTransportFailure_ThrowsTransportException()
+    {
+        _httpTest.SimulateException(new HttpRequestException("Network down"));
+
+        var request = new SendEmailRequest
+        {
+            From = "sender@example.com",
+            To = ["recipient@example.com"],
+            Subject = "Test",
+            Html = "<p>Test</p>"
+        };
+
+        var ex = await Assert.ThrowsAsync<EmailitTransportException>(() => _client.SendEmailAsync(request));
+
+        ex.IsTransient.Should().BeTrue();
+        ex.InnerException.Should().NotBeNull();
     }
 
     #endregion
@@ -627,16 +759,18 @@ public sealed class EmailitClientTests : IDisposable
     }
 
     [Fact]
-    public async Task TestConnectionAsync_Failed_ReturnsNull()
+    public async Task TestConnectionAsync_Failed_ThrowsServerException()
     {
         // Arrange
         _httpTest.RespondWith("Connection refused", 503);
 
         // Act
-        var result = await _client.TestConnectionAsync();
+        var act = () => _client.TestConnectionAsync();
 
         // Assert
-        result.Should().BeNull();
+        var ex = await Assert.ThrowsAsync<EmailitServerException>(act);
+        ex.StatusCode.Should().Be(503);
+        ex.IsTransient.Should().BeTrue();
     }
 
     [Fact]
@@ -644,6 +778,7 @@ public sealed class EmailitClientTests : IDisposable
     {
         using var cts = new CancellationTokenSource();
         cts.Cancel();
+        _httpTest.SimulateException(new OperationCanceledException(cts.Token));
 
         var act = () => _client.TestConnectionAsync(cts.Token);
 
@@ -793,6 +928,18 @@ public sealed class EmailitClientTests : IDisposable
         var options = new EmailitClientOptions { ApiKey = "" };
 
         // Act & Assert
+        Assert.Throws<InvalidOperationException>(() => new EmailitClient(options));
+    }
+
+    [Fact]
+    public void Constructor_WithInvalidMaxDiagnosticBodyLength_ThrowsInvalidOperationException()
+    {
+        var options = new EmailitClientOptions
+        {
+            ApiKey = "em_test_key",
+            MaxDiagnosticBodyLength = 0
+        };
+
         Assert.Throws<InvalidOperationException>(() => new EmailitClient(options));
     }
 

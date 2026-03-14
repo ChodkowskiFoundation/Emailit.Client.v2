@@ -70,7 +70,7 @@ public sealed class EmailSubResourceTests : IDisposable
             attachments = new[]
             {
                 new { filename = "report.pdf", content_type = "application/pdf", size = 102400, content_id = (string?)null },
-                new { filename = "logo.png", content_type = "image/png", size = 2048, content_id = "logo-cid" }
+                new { filename = "logo.png", content_type = "image/png", size = 2048, content_id = (string?)"logo-cid" }
             }
         });
 
