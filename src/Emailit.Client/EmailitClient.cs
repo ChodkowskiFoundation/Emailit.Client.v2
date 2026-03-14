@@ -148,10 +148,26 @@ public sealed class EmailitClient : IEmailitClient
             ct);
 
     [Obsolete("Use RetryEmailAsync instead. This method will be removed in a future version.")]
-    public Task<EmailResponse> ResendEmailAsync(string emailId, CancellationToken ct = default) =>
-        ExecuteAsync<EmailResponse>(
-            () => _client.Request("/v2/emails", emailId, "resend").PostAsync(cancellationToken: ct),
-            ct);
+    public async Task<EmailResponse> ResendEmailAsync(string emailId, CancellationToken ct = default)
+    {
+        try
+        {
+            return await ExecuteAsync<EmailResponse>(
+                () => _client.Request("/v2/emails", emailId, "resend").PostAsync(cancellationToken: ct),
+                ct);
+        }
+        catch (EmailitNotFoundException)
+        {
+            var retriedEmail = await RetryEmailAsync(emailId, ct);
+            return new EmailResponse
+            {
+                Id = retriedEmail.Id,
+                Status = retriedEmail.Status,
+                Message = retriedEmail.Message,
+                CreatedAt = DateTime.UtcNow
+            };
+        }
+    }
 
     public Task<EmailMetaResponse> GetEmailMetaAsync(string emailId, CancellationToken ct = default) =>
         ExecuteAsync<EmailMetaResponse>(
